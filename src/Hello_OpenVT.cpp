@@ -33,20 +33,20 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 */
 
-#include "Hello.hpp"
+#include "Hello_OpenVT.hpp"
 #include "Exception.hpp"
 
-Hello::Hello(const std::string& rMessage)
+Hello_OpenVT::Hello_OpenVT(const std::string& rMessage)
     : mMessage(rMessage)
 {
 }
 
-std::string Hello::GetMessage()
+std::string Hello_OpenVT::GetMessage()
 {
     return mMessage;
 }
 
-void Hello::Complain(const std::string& rComplaint)
+void Hello_OpenVT::Complain(const std::string& rComplaint)
 {
     EXCEPTION(rComplaint);
 }
