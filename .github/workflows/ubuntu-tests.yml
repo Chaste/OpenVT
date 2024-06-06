@@ -36,6 +36,7 @@ jobs:
 
     env:
       CHASTE_TEST_OUTPUT: ${{ github.workspace }}/chaste-test-dir
+      CHASTE_BUILD_DIR: ${{ github.workspace }}/Chaste/chaste-build-dir
       CC: ${{ matrix.cc }}
       CXX: ${{ matrix.cxx }}
 
@@ -82,17 +83,17 @@ jobs:
 
     - name: make build and test directories
       run: |
-        mkdir -p chaste-build-dir
+        mkdir -p ${CHASTE_BUILD_DIR}
         mkdir -p ${CHASTE_TEST_OUTPUT}
 
     - name: cmake configure
       run: cmake -DCMAKE_BUILD_TYPE=Release ..
-      working-directory: chaste-build-dir
+      working-directory: ${{ env.CHASTE_BUILD_DIR }}
 
     - name: build project
       run: cmake --build . --parallel 4 --target project_OpenVT
-      working-directory: chaste-build-dir
+      working-directory: ${{ env.CHASTE_BUILD_DIR }}
 
     - name: run project tests
       run: ctest -j4 -L project_OpenVT --output-on-failure
-      working-directory: chaste-build-dir
+      working-directory: ${{ env.CHASTE_BUILD_DIR }}
