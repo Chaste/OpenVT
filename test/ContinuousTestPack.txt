@@ -1,4 +1,10 @@
 Comparison/TestCellSortingLiteratePaper.hpp
 Comparison/TestCylindricalCryptLiteratePaper.hpp
 Comparison/TestDeltaNotchLiteratePaper.hpp
-Comparison/TestMorphogenMonolayerLiteratePaper.hpp
+Comparison/TestMorphogenMonolayerLiteratePaper.hpp
+Test01PersistentRandomWalk.hpp
+Test02MonolayerGrowth.hpp
+Test03WoundHealing.hpp
+Test04Chemotaxis.hpp
+Test05CellSorting.hpp
+Test06Angiogenesis.hpp
