@@ -1,1 +1,4 @@
-TestHello_OpenVT.hpp
+Comparison/TestCellSortingLiteratePaper.hpp
+Comparison/TestCylindricalCryptLiteratePaper.hpp
+Comparison/TestDeltaNotchLiteratePaper.hpp
+Comparison/TestMorphogenMonolayerLiteratePaper.hpp
