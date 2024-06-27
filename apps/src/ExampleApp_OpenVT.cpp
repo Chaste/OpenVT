@@ -1,6 +1,6 @@
 /*
 
-Copyright (c) 2005-2023, University of Oxford.
+Copyright (c) 2005-2024, University of Oxford.
 All rights reserved.
 
 University of Oxford means the Chancellor, Masters and Scholars of the
@@ -48,8 +48,6 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "PetscTools.hpp"
 #include "PetscException.hpp"
 
-#include "Hello_OpenVT.hpp"
-
 int main(int argc, char *argv[])
 {
     // This sets up PETSc and prints out copyright information, etc.
@@ -73,8 +71,7 @@ int main(int argc, char *argv[])
                 if (PetscTools::AmMaster())
                 {
                     std::string arg_i(argv[i]);
-                    Hello_OpenVT world(arg_i);
-                    std::cout << "Argument " << i << " is " << world.GetMessage() << std::endl << std::flush;
+                    std::cout << "Argument " << i << " is " << arg_i << std::endl << std::flush;
                 }
             }
         }
