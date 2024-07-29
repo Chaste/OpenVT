@@ -95,10 +95,10 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *  This is where you can set parameters to be used in all the simulations.
  */
 
-static const double M_END_STEADY_STATE = 0.5;
-static const double M_END_TIME = 5;
-static const double M_DT_TIME = 0.001;
-static const double M_SAMPLE_TIME = 10;
+static const double M_END_STEADY_STATE = 0.01; //0.5;
+static const double M_END_TIME = 0.02; //5;
+static const double M_DT_TIME = 0.01;
+static const double M_SAMPLE_TIME = 1; //10;
 
 // Both Width and Length must be EVEN numbers here
 static const double M_DOMAIN_WIDTH = 12;
@@ -339,7 +339,7 @@ public:
      * Voronoi Tesselation model.
      */
 
-    void TestMeshBasedNoGhostsInternalVoid()
+    void TestMeshBasedInternalVoid()
     {
         std::string output_directory =  M_HEAD_FOLDER + "/Mesh/NoGhosts/Pre-Void";
 
