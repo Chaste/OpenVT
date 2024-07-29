@@ -90,7 +90,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 static const double M_END_TIME = 1; //100
 static const double M_DT_TIME = 0.005;
-static const double M_SAMPLE_TIME = 50;
+static const double M_SAMPLE_TIME = 10;
 
 static const double M_CONTACT_INHIBITION_LEVEL = 0.8;
 static const double M_STEM_CELL_DIVISION_PROBABILITY = 0.1;
@@ -292,9 +292,10 @@ public:
         p_linear_force->SetCutOffLength(cut_off_length);
         simulator.AddForce(p_linear_force);
 
-        MAKE_PTR(CicularityCalcModifier<2>, circularity_modifier);
-        circularity_modifier->SetOutputDirectory(output_directory);
-        simulator.AddSimulationModifier(circularity_modifier);
+        // TODO FIX THE CIRCULARITY CALCULATION
+        // MAKE_PTR(CicularityCalcModifier<2>, circularity_modifier);
+        // circularity_modifier->SetOutputDirectory(output_directory);
+        // simulator.AddSimulationModifier(circularity_modifier);
 
         // Mark Ancestors
         simulator.rGetCellPopulation().SetCellAncestorsToLocationIndices();
@@ -333,7 +334,7 @@ public:
 
         // Create tissue
         MeshBasedCellPopulation<2> cell_population(*p_mesh, cells);
-        cell_population.SetBoundVoronoiTessellation(true);
+        //cell_population.SetBoundVoronoiTessellation(true);
         cell_population.AddCellPopulationCountWriter<CellProliferativeTypesCountWriter>();
         cell_population.AddCellWriter<CellVolumesWriter>();
         cell_population.AddCellWriter<CellIdWriter>();
@@ -361,9 +362,10 @@ public:
         p_linear_force->SetMeinekeSpringStiffness(50.0);
         simulator.AddForce(p_linear_force);
 
-        MAKE_PTR(CicularityCalcModifier<2>, circularity_modifier);
-        circularity_modifier->SetOutputDirectory(output_directory);
-        simulator.AddSimulationModifier(circularity_modifier);
+        // TODO FIX THE CIRCULARITY CALCULATION
+        // MAKE_PTR(CicularityCalcModifier<2>, circularity_modifier);
+        // circularity_modifier->SetOutputDirectory(output_directory);
+        // simulator.AddSimulationModifier(circularity_modifier);
 
         // Mark Ancestors
         simulator.rGetCellPopulation().SetCellAncestorsToLocationIndices();
@@ -429,9 +431,10 @@ public:
         // Mark Ancestors
         simulator.rGetCellPopulation().SetCellAncestorsToLocationIndices();
 
-        MAKE_PTR(CicularityCalcModifier<2>, circularity_modifier);
-        circularity_modifier->SetOutputDirectory(output_directory);
-        simulator.AddSimulationModifier(circularity_modifier);
+        // TODO FIX THE CIRCULARITY CALCULATION
+        // MAKE_PTR(CicularityCalcModifier<2>, circularity_modifier);
+        // circularity_modifier->SetOutputDirectory(output_directory);
+        // simulator.AddSimulationModifier(circularity_modifier);
 
         // Add target area modifier
         // MAKE_PTR(SimpleTargetAreaModifier<2>, p_growth_modifier);
