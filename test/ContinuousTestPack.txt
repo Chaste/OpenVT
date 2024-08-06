@@ -2,6 +2,7 @@ Comparison/TestCellSortingLiteratePaper.hpp
 Comparison/TestCylindricalCryptLiteratePaper.hpp
 Comparison/TestDeltaNotchLiteratePaper.hpp
 Comparison/TestMorphogenMonolayerLiteratePaper.hpp
+Investigation/TestCentreBasedCellSorting.hpp
 Test01PersistentRandomWalk.hpp
 Test02MonolayerGrowth.hpp
 Test03WoundHealing.hpp

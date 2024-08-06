@@ -107,7 +107,7 @@ class Test05CellSorting : public AbstractCellBasedWithTimingsTestSuite
 private:
 
     /*
-     * This is a helper method to randomly label cells add is used in all simulations.
+     * This is a helper method to randomly label cells and is used in all simulations.
      */ 
 
     void RandomlyLabelCells(std::list<CellPtr>& rCells, boost::shared_ptr<AbstractCellProperty> pLabel, double labelledRatio)
@@ -438,7 +438,6 @@ public:
         // Run simulation
         simulator.SetEndTime(M_TIME_TO_STEADY_STATE + M_TIME_FOR_SIMULATION);
         simulator.Solve();
-
 
         // Check that the same number of cells
         TS_ASSERT_EQUALS(simulator.rGetCellPopulation().GetNumRealCells(), M_NUM_CELLS_ACROSS*M_NUM_CELLS_ACROSS);
