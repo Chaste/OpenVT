@@ -43,6 +43,20 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "AbstractCellBasedWithTimingsTestSuite.hpp"
 
+#include "DiffusionForce.hpp"
+#include "AbstractCellBasedWithTimingsTestSuite.hpp"
+#include "CellVolumesWriter.hpp"
+#include "CellsGenerator.hpp"
+#include "FixedG1GenerationalCellCycleModel.hpp"
+#include "ForwardEulerNumericalMethod.hpp"
+#include "NodeBasedCellPopulation.hpp"
+#include "OffLatticeSimulation.hpp"
+#include "SmartPointers.hpp"
+#include "DifferentiatedCellProliferativeType.hpp"
+
+#include "NodeVelocityWriter.hpp"
+
+
 #include "PetscSetupAndFinalize.hpp"
 
 
@@ -53,12 +67,49 @@ private:
 
 public:
 
-    /*
+    /**
+     * SImple node based random walk of 1000 cells 
      */
-   void TestNotMuch()
-   {
-        TS_ASSERT_THROWS_NOWT();
+    void TestRandomWalk()
+    {
+        EXIT_IF_PARALLEL; // Cant access cells with index loop on multiple processors.
+
+        // Create a simple mesh
+        unsigned num_cells= 1000;
+        std::vector<Node<2>*> nodes (num_cells);
+
+        for ( unsigned j = 0; j < num_cells; j++ )
+        {
+                nodes[j] = new Node<2>(j, false, 0.0,0.0);
+        }
+
+        // Convert this to a NodesOnlyMesh
+        NodesOnlyMesh<2> mesh;
+        mesh.ConstructNodesWithoutMesh(nodes, 1.5);
+
+        // Create cells
+        std::vector<CellPtr> cells;
+        MAKE_PTR(DifferentiatedCellProliferativeType, p_differentiated_type);
+        CellsGenerator<FixedG1GenerationalCellCycleModel, 2> cells_generator;
+        cells_generator.GenerateBasicRandom(cells, mesh.GetNumNodes(), p_differentiated_type);
+
+        // Create a node-based cell population
+        NodeBasedCellPopulation<2> node_based_cell_population(mesh, cells);
+
+        // Set up cell-based simulation
+        OffLatticeSimulation<2> simulator(node_based_cell_population);
+        simulator.SetOutputDirectory("OpenVT/Test01PersistentRandomWalk");
+        simulator.SetDt(1.0/100.0);
+        simulator.SetEndTime(10.0);
+        simulator.SetUpdateCellPopulationRule(false);
+
+        // Create a diffusion force law and pass it to the simulation
+        MAKE_PTR(DiffusionForce<2>, p_diffusion_force);
+        simulator.AddForce(p_diffusion_force);
+
+        simulator.Solve();
     }
+        
 };
 
 #endif /* TEST01PERSISTENTRANDOMWALK_HPP_ */
