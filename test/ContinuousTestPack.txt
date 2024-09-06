@@ -5,6 +5,7 @@ Comparison/TestMorphogenMonolayerLiteratePaper.hpp
 Investigation/TestCentreBasedCellSorting.hpp
 Test01PersistentRandomWalk.hpp
 Test02MonolayerGrowth.hpp
+Test02aMonolayerGrowth.hpp
 Test03WoundHealing.hpp
 Test04Chemotaxis.hpp
 Test05CellSorting.hpp
