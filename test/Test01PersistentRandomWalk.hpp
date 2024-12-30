@@ -43,7 +43,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "AbstractCellBasedWithTimingsTestSuite.hpp"
 
-#include "DiffusionForce.hpp"
+#include "RandomMotionForce.hpp"
 #include "AbstractCellBasedWithTimingsTestSuite.hpp"
 #include "CellVolumesWriter.hpp"
 #include "CellsGenerator.hpp"
@@ -103,8 +103,8 @@ public:
         simulator.SetEndTime(10.0);
         simulator.SetUpdateCellPopulationRule(false);
 
-        // Create a diffusion force law and pass it to the simulation
-        MAKE_PTR(DiffusionForce<2>, p_diffusion_force);
+        // Create a Random force law (i.e diffusion) and pass it to the simulation
+        MAKE_PTR(RandomMotionForce<2>, p_diffusion_force);
         simulator.AddForce(p_diffusion_force);
 
         simulator.Solve();
