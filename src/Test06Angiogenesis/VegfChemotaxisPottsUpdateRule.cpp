@@ -52,7 +52,7 @@ double VegfChemotaxisPottsUpdateRule<DIM>::EvaluateHamiltonianContribution(unsig
                                                                         unsigned targetNodeIndex,
                                                                         PottsBasedCellPopulation<DIM>& rCellPopulation)
 {
-    double CellBoundaryChemotaxisParameter = 500.0;
+    double CellBoundaryChemotaxisParameter = 5000.0;
     //double CellCellChemotaxisParameter = 0.0;
 
 
@@ -87,7 +87,7 @@ double VegfChemotaxisPottsUpdateRule<DIM>::EvaluateHamiltonianContribution(unsig
         double target_vegf = rCellPopulation.GetPdeSolutionAtNode(targetNodeIndex);
 //PRINT_2_VARIABLES(current_vegf,target_vegf);
 
-        delta_H = 1000*CellBoundaryChemotaxisParameter * (current_vegf - target_vegf);
+        delta_H = CellBoundaryChemotaxisParameter * (current_vegf - target_vegf);
 
     }
     return delta_H;

@@ -52,7 +52,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "SurfaceAreaConstraintPottsUpdateRule.hpp"
 #include "AdhesionPottsUpdateRule.hpp"
 #include "VegfChemotaxisPottsUpdateRule.hpp"
-#include "DifferentialAdhesionPottsUpdateRule.hpp"
+#include "ExtendedAdhesionPottsUpdateRule.hpp"
 #include "TransitCellProliferativeType.hpp"
 #include "CellLabel.hpp"
 #include "CellLabelWriter.hpp"
@@ -76,19 +76,19 @@ public:
         
         double M_DOMAIN_WIDTH = 50.0;
         double M_DUDT_COEFICIENT = 1.0;
-        double M_DIFFUSION_COEFICIENT = 1e2; //1e-3
+        double M_DIFFUSION_COEFICIENT = 1e-1; //1e-3
         double M_CONSTANT_CELL_SECRETION = 1e-2; //1e-3
-        double M_LINEAR_SECRETION = 1e-2; //1e-3
-        double cell_area = 25.0;
+        double M_LINEAR_SECRETION = 1e-1; //1e-3
+        double M_TARGET_CELL_VOLUME = 25;
+        double M_TARGET_CELL_SURFACE_AREA = 16;
         double box_h = 1.0;
         double dt = 0.01;
-        double end_time = 1.0;
-        double temperature = 1;
-
+        double end_time = 10.0;
+        double temperature = 10;
 
         EXIT_IF_PARALLEL;
 
-        PottsMeshGenerator<2> generator((int) M_DOMAIN_WIDTH, 4, 4, (int) M_DOMAIN_WIDTH, 4, 4, 1, 1, 1, 4u);  // Parameters are: lattice sites across; num elements across; element width; lattice sites up; num elements up; element height; and element spacing.
+        PottsMeshGenerator<2> generator((int) M_DOMAIN_WIDTH, 4, 5, (int) M_DOMAIN_WIDTH, 4, 5, 1, 1, 1, 4u);  
         boost::shared_ptr<PottsMesh<2> > p_mesh = generator.GetMesh();
 
         std::vector<CellPtr> cells;
@@ -107,19 +107,20 @@ public:
         simulator.SetSamplingTimestepMultiple(10);
 
         MAKE_PTR(VolumeConstraintPottsUpdateRule<2>, p_volume_constraint_update_rule);
-        p_volume_constraint_update_rule->SetMatureCellTargetVolume(16);
+        p_volume_constraint_update_rule->SetMatureCellTargetVolume(M_TARGET_CELL_VOLUME);
         p_volume_constraint_update_rule->SetDeformationEnergyParameter(25);
         
         simulator.AddUpdateRule(p_volume_constraint_update_rule);
         
-        // MAKE_PTR(SurfaceAreaConstraintPottsUpdateRule<2>, p_surface_area_update_rule);
-        // p_surface_area_update_rule->SetMatureCellTargetSurfaceArea(16);
-        // p_surface_area_update_rule->SetDeformationEnergyParameter(0.5);
-        // simulator.AddUpdateRule(p_surface_area_update_rule);
+        MAKE_PTR(SurfaceAreaConstraintPottsUpdateRule<2>, p_surface_area_update_rule);
+        p_surface_area_update_rule->SetMatureCellTargetSurfaceArea(M_TARGET_CELL_SURFACE_AREA);
+        p_surface_area_update_rule->SetDeformationEnergyParameter(0.5);
+        simulator.AddUpdateRule(p_surface_area_update_rule);
 
-        MAKE_PTR(AdhesionPottsUpdateRule<2>, p_adhesion_update_rule);
+        MAKE_PTR(ExtendedAdhesionPottsUpdateRule<2>, p_adhesion_update_rule);
         p_adhesion_update_rule->SetCellCellAdhesionEnergyParameter(40);
         p_adhesion_update_rule->SetCellBoundaryAdhesionEnergyParameter(20);
+        p_adhesion_update_rule->SetCellBoundaryNodeAdhesionEnergyParameter(100);
         simulator.AddUpdateRule(p_adhesion_update_rule);
 
         MAKE_PTR(VegfChemotaxisPottsUpdateRule<2>, p_chemotaxis_update_rule);
@@ -130,15 +131,15 @@ public:
         cell_population.SetDataOnAllCells("VEGF", 0.0);
 
         // Create a ChasteCuboid on which to base the finite element mesh used to solve the PDE
-        ChastePoint<2> lower(-0.5,-0.5);
-        ChastePoint<2> upper(M_DOMAIN_WIDTH-0.5, M_DOMAIN_WIDTH-0.5);
+        ChastePoint<2> lower(0.0,0.0);
+        ChastePoint<2> upper(M_DOMAIN_WIDTH-1, M_DOMAIN_WIDTH-1);
         MAKE_PTR_ARGS(ChasteCuboid<2>, p_cuboid, (lower, upper));
 
         // Create PDE and BCS
         double dudt_coeficient = M_DUDT_COEFICIENT;
         double diffusion_coeficient = M_DIFFUSION_COEFICIENT;
-        double constant_cell_uptake = M_CONSTANT_CELL_SECRETION*cell_area; 
-        double linear_cell_uptake = M_LINEAR_SECRETION*cell_area;
+        double constant_cell_uptake = M_CONSTANT_CELL_SECRETION; 
+        double linear_cell_uptake = M_LINEAR_SECRETION;
         double constant_uptake = 0.0; 
         double linear_uptake = - M_LINEAR_SECRETION;
         // double constant_uptake = M_CONSTANT_SECRETION*cell_area; 

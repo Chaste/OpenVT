@@ -35,6 +35,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "PottsParabolicPde.hpp"
 #include "ApoptoticCellProperty.hpp"
+#include "Debug.hpp"
 
 template<unsigned DIM>
 PottsParabolicPde<DIM>::PottsParabolicPde(PottsBasedCellPopulation<DIM>& rCellPopulation,
@@ -107,64 +108,64 @@ bool PottsParabolicPde<DIM>::GetScaleByCellVolume() const
 template<unsigned DIM>
 void PottsParabolicPde<DIM>::SetupSourceTerms(TetrahedralMesh<DIM,DIM>& rCoarseMesh, std::map<CellPtr, unsigned>* pCellPdeElementMap) // must be called before solve
 {
-    NEVER_REACHED
-    // Allocate memory
-    mCellDensityOnCoarseElements.resize(rCoarseMesh.GetNumElements());
-    for (unsigned elem_index=0; elem_index<mCellDensityOnCoarseElements.size(); elem_index++)
-    {
-        mCellDensityOnCoarseElements[elem_index] = 0.0;
-    }
+    NEVER_REACHED;
+    // // Allocate memory
+    // mCellDensityOnCoarseElements.resize(rCoarseMesh.GetNumElements());
+    // for (unsigned elem_index=0; elem_index<mCellDensityOnCoarseElements.size(); elem_index++)
+    // {
+    //     mCellDensityOnCoarseElements[elem_index] = 0.0;
+    // }
 
-    {
-        // Loop over cells, find which coarse element it is in, and add 1 to mSourceTermOnCoarseElements[elem_index]
-        for (typename PottsBasedCellPopulation<DIM>::Iterator cell_iter = mrCellPopulation.Begin();
-            cell_iter != mrCellPopulation.End();
-            ++cell_iter)
-        {
-            unsigned elem_index = UNSIGNED_UNSET;
-            const ChastePoint<DIM>& r_position_of_cell = mrCellPopulation.GetLocationOfCellCentre(*cell_iter);
+    // {
+    //     // Loop over cells, find which coarse element it is in, and add 1 to mSourceTermOnCoarseElements[elem_index]
+    //     for (typename PottsBasedCellPopulation<DIM>::Iterator cell_iter = mrCellPopulation.Begin();
+    //         cell_iter != mrCellPopulation.End();
+    //         ++cell_iter)
+    //     {
+    //         unsigned elem_index = UNSIGNED_UNSET;
+    //         const ChastePoint<DIM>& r_position_of_cell = mrCellPopulation.GetLocationOfCellCentre(*cell_iter);
 
-            if (pCellPdeElementMap != nullptr)
-            {
-                elem_index = (*pCellPdeElementMap)[*cell_iter];
-            }
-            else
-            {
-                elem_index = rCoarseMesh.GetContainingElementIndex(r_position_of_cell);
-            }
+    //         if (pCellPdeElementMap != nullptr)
+    //         {
+    //             elem_index = (*pCellPdeElementMap)[*cell_iter];
+    //         }
+    //         else
+    //         {
+    //             elem_index = rCoarseMesh.GetContainingElementIndex(r_position_of_cell);
+    //         }
 
-            bool cell_is_apoptotic = cell_iter->template HasCellProperty<ApoptoticCellProperty>();
+    //         bool cell_is_apoptotic = cell_iter->template HasCellProperty<ApoptoticCellProperty>();
 
-            if (!cell_is_apoptotic)
-            {
-                double cell_weight = 1.0;
+    //         if (!cell_is_apoptotic)
+    //         {
+    //             double cell_weight = 1.0;
 
-                if (mScaleByCellVolume)
-                {   
-                    // If scaling by cell volume then use volume here instead of cell count 
-                    cell_weight = mrCellPopulation.GetVolumeOfCell(*cell_iter);
+    //             if (mScaleByCellVolume)
+    //             {   
+    //                 // If scaling by cell volume then use volume here instead of cell count 
+    //                 cell_weight = mrCellPopulation.GetVolumeOfCell(*cell_iter);
 
-                    if (cell_weight <1e-6)
-                    {
-                        EXCEPTION("The volume of one of the cells is " << cell_weight << 
-                                " and you are scaling by cell volume. Either turn scaling off or use"  
-                                " a cell model with non zero areas (i.e. a Bounded Voronoi Tesselation model).");
-                    }
-                }
+    //                 if (cell_weight <1e-6)
+    //                 {
+    //                     EXCEPTION("The volume of one of the cells is " << cell_weight << 
+    //                             " and you are scaling by cell volume. Either turn scaling off or use"  
+    //                             " a cell model with non zero areas (i.e. a Bounded Voronoi Tesselation model).");
+    //                 }
+    //             }
 
-                mCellDensityOnCoarseElements[elem_index] += cell_weight;
-            }
-        }
-    }
+    //             mCellDensityOnCoarseElements[elem_index] += cell_weight;
+    //         }
+    //     }
+    // }
 
-    // Then divide each entry of mSourceTermOnCoarseElements by the element's area
-    c_matrix<double, DIM, DIM> jacobian;
-    double det;
-    for (unsigned elem_index=0; elem_index<mCellDensityOnCoarseElements.size(); elem_index++)
-    {
-        rCoarseMesh.GetElement(elem_index)->CalculateJacobian(jacobian, det);
-        mCellDensityOnCoarseElements[elem_index] /= rCoarseMesh.GetElement(elem_index)->GetVolume(det);
-    }
+    // // Then divide each entry of mSourceTermOnCoarseElements by the element's area
+    // c_matrix<double, DIM, DIM> jacobian;
+    // double det;
+    // for (unsigned elem_index=0; elem_index<mCellDensityOnCoarseElements.size(); elem_index++)
+    // {
+    //     rCoarseMesh.GetElement(elem_index)->CalculateJacobian(jacobian, det);
+    //     mCellDensityOnCoarseElements[elem_index] /= rCoarseMesh.GetElement(elem_index)->GetVolume(det);
+    // }
 }
 
 template<unsigned DIM>
@@ -176,27 +177,43 @@ double PottsParabolicPde<DIM>::ComputeDuDtCoefficientFunction(const ChastePoint<
 template<unsigned DIM>
 double PottsParabolicPde<DIM>::ComputeSourceTerm(const ChastePoint<DIM>& rX, double u, Element<DIM,DIM>* pElement)
 {
+    NEVER_REACHED;
+
+    // assert(!mCellDensityOnCoarseElements.empty());
+
+    // // The source term is (a*density + c)*u + b*density + d
+    // bool is_in_cell = 1;
+
+    // double constant_source_term = mConstantCellSourceCoefficient * is_in_cell + mConstantSourceCoefficient;
+    // double linear_source_term_coeficient = mLinearCellSourceCoefficient * is_in_cell + mLinearSourceCoefficient;
     
-    assert(!mCellDensityOnCoarseElements.empty());
+    // double source_term = constant_source_term + linear_source_term_coeficient * u;
 
-    // The source term is (a*density + c)*u + b*density + d
-    bool is_in_cell = 1;
-
-    double constant_source_term = mConstantCellSourceCoefficient * is_in_cell + mConstantSourceCoefficient;
-    double linear_source_term_coeficient = mLinearCellSourceCoefficient * is_in_cell + mLinearSourceCoefficient;
-    
-    double source_term = constant_source_term + linear_source_term_coeficient * u;
-
-    return source_term;
-    //return 25*mCellDensityOnCoarseElements[pElement->GetIndex()] - u;
+    // return source_term;
+    // //return 25*mCellDensityOnCoarseElements[pElement->GetIndex()] - u;
 }
 
 // LCOV_EXCL_START
 template<unsigned DIM>
 double PottsParabolicPde<DIM>::ComputeSourceTermAtNode(const Node<DIM>& rNode, double u)
 {
-    NEVER_REACHED;
-    return 0.0;
+    //mrCellPopulation->GetNumNodes();
+
+    // Need to get index as nodes in FE Mesh and PottsMesh are different (but in same location).
+    unsigned node_index = rNode.GetIndex();
+    
+    std::set<unsigned> containing_elements = mrCellPopulation.GetNode(node_index)->rGetContainingElementIndices();
+   
+    unsigned node_contained = !containing_elements.empty();
+
+//PRINT_2_VARIABLES(node_index,node_contained);
+
+    double constant_source_term = mConstantCellSourceCoefficient * (double) node_contained + mConstantSourceCoefficient;
+    double linear_source_term_coeficient = mLinearCellSourceCoefficient * (double) node_contained + mLinearSourceCoefficient;
+    
+    double source_term = constant_source_term + linear_source_term_coeficient * u;
+//PRINT_3_VARIABLES(constant_source_term,linear_source_term_coeficient, source_term);
+    return source_term;
 }
 // LCOV_EXCL_STOP
 

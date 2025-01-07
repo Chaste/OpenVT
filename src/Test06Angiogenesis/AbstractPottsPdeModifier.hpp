@@ -72,10 +72,6 @@ private:
         archive & mpMeshCuboid;
         archive & mStepSize;
         archive & mSetBcsOnBoxBoundary;
-        archive & mSetBcsOnBoundingSphere;
-        archive & mSetBcsOnConvexHull;
-        archive & mUseVoronoiCellsForInterpolation;
-        archive & mTypicalCellRadius;
     }
 
 protected:
@@ -101,33 +97,6 @@ protected:
      */
     bool mSetBcsOnBoxBoundary;
     
-    /**
-     * Whether to set the boundary condition on a sphere which bounds the cell centres of the tissue. 
-     * Only used if mSetBcsOnBoxBoundary is false.
-     * Default to false.
-     */
-    bool mSetBcsOnBoundingSphere;
-
-    /**
-     * Whether to set the boundary condition on a the convex hull which bounds the cell centres of the tissue. 
-     * Only used if mSetBcsOnBoxBoundary is false.
-     * Default to false.
-     */
-    bool mSetBcsOnConvexHull;
-
-    /**
-     * Whether to use a cell centres voroni region to interpolate the pde solution onto cells.
-     */
-    bool mUseVoronoiCellsForInterpolation;
-
-    /** 
-     * Used to define if a FE node is within a certain radius of a cell centre to help define
-     * boundary conditions when mSetBcsOnBoxBoundary and mSetBcsOnBoundingSphere are false 
-     * 
-     * defaults to 0.5 CD
-     */
-    double mTypicalCellRadius;
-
 public:
 
     /**
@@ -169,56 +138,6 @@ public:
      * @return mSetBcsOnCoarseBoundary.
      */
     bool AreBcsSetOnBoxBoundary();
-
-    /**
-     * Set mSetBcsOnBoundingSphere.
-     *
-     * @param setBcsOnBoundingSphere whether to set the boundary condition on the bounding spher of the cell population
-     */
-    void SetBcsOnBoundingSphere(bool setBcsOnBoundingSphere);
-
-    /**
-     * @return mSetBcsOnBoundingSphere.
-     */
-    bool AreBcsSetOnBoundingSphere();
-
-    /**
-     * Set mSetBcsOnConvexHull.
-     *
-     * @param setBcsOnConvexHull whether to set the boundary condition on the convex hull of than the cell population
-     */
-    void SetBcsOnConvexHull(bool setBcsOnConvexHull);
-
-    /**
-     * @return mSetBcsOnConvexHull.
-     */
-    bool AreBcsSetOnConvexHull();
-
-    /**
-     * Set mUseVoronoiCellsForInterpolation.
-     *
-     * @param useVoronoiCellsForInterpolation whether to use the voroni region of cells for interpolation 
-     * of the solution from the FE mesh to the cells.
-     */
-    void SetUseVoronoiCellsForInterpolation(bool useVoronoiCellsForInterpolation);
-
-    /**
-     * @return mUseVoronoiCellsForInterpolation.
-     */
-    bool GetUseVoronoiCellsForInterpolation();
-
-    /**
-     * Set mTypicalCellRadius.
-     *
-     * @param typicalCellRadius the radius to use for deining if FE nodes are near cells or not.
-     */
-    void SetTypicalCellRadius(double typicalCellRadius);
-
-    /**
-     * @return mTypicalCellRadius.
-     */
-    double GetTypicalCellRadius();
-
 
     /**
      * Helper method to construct the boundary conditions container for the PDE.
@@ -266,23 +185,6 @@ public:
      * @param rCellPopulation reference to the cell population
      */
     void UpdateCellData(AbstractCellPopulation<DIM,DIM>& rCellPopulation);
-
-    /**
-     * Initialise mCellPdeElementMap.
-     *
-     * @param rCellPopulation reference to the cell population
-     */
-    void InitialiseCellPdeElementMap(AbstractCellPopulation<DIM,DIM>& rCellPopulation);
-
-    /**
-     * Update the mCellPdeElementMap
-     *
-     * This method should be called before sending the element map to a PDE class
-     * to ensure map is up to date.
-     *
-     * @param rCellPopulation reference to the cell population
-     */
-    void UpdateCellPdeElementMap(AbstractCellPopulation<DIM,DIM>& rCellPopulation);
 
     /**
      * Overridden OutputSimulationModifierParameters() method.

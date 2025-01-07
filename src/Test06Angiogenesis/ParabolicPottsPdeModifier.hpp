@@ -33,8 +33,8 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 */
 
-#ifndef PARABOLICPottsPDEMODIFIER_HPP_
-#define PARABOLICPottsPDEMODIFIER_HPP_
+#ifndef PARABOLICPOTTSPDEMODIFIER_HPP_
+#define PARABOLICPOTTSPDEMODIFIER_HPP_
 
 #include "ChasteSerialization.hpp"
 #include <boost/serialization/base_object.hpp>
@@ -43,6 +43,8 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "BoundaryConditionsContainer.hpp"
 
 /**
+ * TODO UPDATE THIS!!
+ * 
  * A modifier class in which a linear parabolic PDE coupled to a cell-based simulation
  * is solved on a coarse domain.
  *
@@ -80,21 +82,7 @@ private:
     void serialize(Archive & archive, const unsigned int version)
     {
         archive & boost::serialization::base_object<AbstractPottsPdeModifier<DIM> >(*this);
-        archive & mMoveSolutionWithCells;
-        archive & mOldCellLocations;
     }
-
-    /**
-     * Whether to move the solution along with the cells in the cell population.
-     * Default to true.
-     */
-    bool mMoveSolutionWithCells;
-
-    /**
-     * Map used to calculate displacement of cells if moving pde solution with cells
-     */
-    std::map<CellPtr, c_vector<double, DIM> > mOldCellLocations;
-    
 
 public:
 
@@ -161,29 +149,6 @@ public:
     void SetupInitialSolutionVector(AbstractCellPopulation<DIM,DIM>& rCellPopulation);
 
     /**
-     * Helper method to interpolate the PDE solution from cells using the CellData.
-     * Use the cells voronoi region as all fe nodes in a cell centre voronoi region are given the 
-     * value from cell data.
-     *
-     * @param rCellPopulation reference to the cell population
-     * 
-     * @return the solution interpolated onto the FE Mesh
-     */
-    Vec InterpolateSolutionFromCellMovement(AbstractCellPopulation<DIM,DIM>& rCellPopulation);
-
-    /**
-     * Set mMoveSolutionWithCells.
-     *
-     * @param moveSolutionWithCells whether to move the solution with cells. 
-     */
-    void SetMoveSolutionWithCells(bool moveSolutionWithCells);
-
-    /**
-     * @return mMoveSolutionWithCells.
-     */
-    bool GetMoveSolutionWithCells();
-
-    /**
      * Overridden OutputSimulationModifierParameters() method.
      * Output any simulation modifier parameters to file.
      *
@@ -234,4 +199,4 @@ inline void load_construct_data(
 }
 } // namespace ...
 
-#endif /*PARABOLICPottsPDEMODIFIER_HPP_*/
+#endif /*PARABOLICPOTTSPDEMODIFIER_HPP_*/

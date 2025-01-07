@@ -38,6 +38,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "LinearBasisFunction.hpp"
 #include "Debug.hpp"
 #include "VtkMeshWriter.hpp"
+#include "PottsMesh.hpp"
 
 template<unsigned DIM>
 AbstractPottsPdeModifier<DIM>::AbstractPottsPdeModifier(boost::shared_ptr<AbstractLinearPde<DIM,DIM> > pPde,
@@ -52,11 +53,7 @@ AbstractPottsPdeModifier<DIM>::AbstractPottsPdeModifier(boost::shared_ptr<Abstra
                                solution),
       mpMeshCuboid(pMeshCuboid),
       mStepSize(stepSize),
-      mSetBcsOnBoxBoundary(true),
-      mSetBcsOnBoundingSphere(false),
-      mSetBcsOnConvexHull(false),
-      mUseVoronoiCellsForInterpolation(false),
-      mTypicalCellRadius(0.5) // defaults to 0.5
+      mSetBcsOnBoxBoundary(true)
 {
     if (pMeshCuboid)
     {
@@ -92,261 +89,111 @@ bool AbstractPottsPdeModifier<DIM>::AreBcsSetOnBoxBoundary()
 }
 
 template<unsigned DIM>
-void AbstractPottsPdeModifier<DIM>::SetBcsOnBoundingSphere(bool setBcsOnBoundingSphere)
-{
-    mSetBcsOnBoundingSphere = setBcsOnBoundingSphere;
-}
-
-template<unsigned DIM>
-bool AbstractPottsPdeModifier<DIM>::AreBcsSetOnBoundingSphere()
-{
-    return mSetBcsOnBoundingSphere;
-}
-
-template<unsigned DIM>
-void AbstractPottsPdeModifier<DIM>::SetBcsOnConvexHull(bool setBcsOnConvexHull)
-{
-    mSetBcsOnConvexHull = setBcsOnConvexHull;
-}
-
-template<unsigned DIM>
-bool AbstractPottsPdeModifier<DIM>::AreBcsSetOnConvexHull()
-{
-    return mSetBcsOnConvexHull;
-}
-
-template<unsigned DIM>
-void AbstractPottsPdeModifier<DIM>::SetUseVoronoiCellsForInterpolation(bool useVoronoiCellsForInterpolation)
-{
-    mUseVoronoiCellsForInterpolation = useVoronoiCellsForInterpolation;
-}
-
-template<unsigned DIM>
-bool AbstractPottsPdeModifier<DIM>::GetUseVoronoiCellsForInterpolation()
-{
-    return mUseVoronoiCellsForInterpolation;
-}
-
-template<unsigned DIM>
-void AbstractPottsPdeModifier<DIM>::SetTypicalCellRadius(double typicalCellRadius)
-{
-    assert(mTypicalCellRadius>=0.0);
-    mTypicalCellRadius = typicalCellRadius;
-}
-
-template<unsigned DIM>
-double AbstractPottsPdeModifier<DIM>::GetTypicalCellRadius()
-{
-    return mTypicalCellRadius;
-}
-
-template<unsigned DIM>
 void AbstractPottsPdeModifier<DIM>::ConstructBoundaryConditionsContainerHelper(AbstractCellPopulation<DIM,DIM>& rCellPopulation,
                                                                                    std::shared_ptr<BoundaryConditionsContainer<DIM,DIM,1> > pBcc)
 {
+    // Check both meshes are the same
+        if (this->mpFeMesh->GetNumNodes() != rCellPopulation.GetNumNodes())
+        {
+            PRINT_2_VARIABLES(this->mpFeMesh->GetNumNodes(), rCellPopulation.GetNumNodes());
+
+            NEVER_REACHED;
+        }
+
     // Reset mIsDirichletBoundaryNode
     for (unsigned i=0; i<this->mpFeMesh->GetNumNodes(); i++)
     {
        this->mIsDirichletBoundaryNode[i] = 0.0;
     }
-
+// TODO make this use PottsElements to define the tissue.
     if (!this->mSetBcsOnBoxBoundary)
     {
-        // Here we approximate the cell population by the bounding spehere and apply the boundary conditions outside the sphere.
-        if (this->mSetBcsOnBoundingSphere)
-        {
-            //Cant apply on the convex hull and bounding sphere at same time 
-            if(this->mSetBcsOnConvexHull)
-            {
-                NEVER_REACHED;
-            }
+        NEVER_REACHED;
+        // Set pde nodes as boundary node if elements dont contain cells or nodes aren't within a specified distance of a cell centre
+        
+        // // Get the set of coarse element indices that contain cells
+        // std::set<unsigned> coarse_element_indices_in_map;
+        // for (typename AbstractCellPopulation<DIM>::Iterator cell_iter = rCellPopulation.Begin();
+        //     cell_iter != rCellPopulation.End();
+        //     ++cell_iter)
+        // {
+        //     coarse_element_indices_in_map.insert(this->mCellPdeElementMap[*cell_iter]);
+        // }
 
-            // First find the centre of the tissue by choosing the mid point of the extrema.
-            c_vector<double, DIM> tissue_maxima = zero_vector<double>(DIM);
-            c_vector<double, DIM> tissue_minima = zero_vector<double>(DIM);
-            for (unsigned i = 0; i < DIM; i++)
-            {
-                tissue_maxima[i] = -DBL_MAX;
-                tissue_minima[i] = DBL_MAX;
-            }
-            
-            
-            for (typename AbstractCellPopulation<DIM>::Iterator cell_iter = rCellPopulation.Begin();
-                cell_iter != rCellPopulation.End();
-                ++cell_iter)
-            {
-                const ChastePoint<DIM>& r_position_of_cell = rCellPopulation.GetLocationOfCellCentre(*cell_iter);
-                
-                for (unsigned i = 0; i < DIM; i++)
-                {
-                    if (r_position_of_cell[i] > tissue_maxima[i])
-                    {
-                        tissue_maxima[i] = r_position_of_cell[i];
-                    }
-                    if (r_position_of_cell[i] < tissue_minima[i])
-                    {
-                        tissue_minima[i] = r_position_of_cell[i];
-                    }
-                }               
-            }
+        // // Find the node indices associated with elements whose indices are NOT in the set coarse_element_indices_in_map
+        // std::set<unsigned> coarse_mesh_boundary_node_indices;
+        // for (unsigned i=0; i<this->mpFeMesh->GetNumElements(); i++)
+        // {
+        //     if (coarse_element_indices_in_map.find(i) == coarse_element_indices_in_map.end())
+        //     {
+        //         Element<DIM,DIM>* p_element = this->mpFeMesh->GetElement(i);
+        //         for (unsigned j=0; j<DIM+1; j++)
+        //         {
+        //             unsigned node_index = p_element->GetNodeGlobalIndex(j);
+        //             coarse_mesh_boundary_node_indices.insert(node_index);
+        //         }
+        //     }
+        // }
 
-            c_vector<double, DIM> tissue_centre = 0.5*(tissue_maxima + tissue_minima);
+        // // Also remove nodes that are within the typical cell radius from the centre of a cell.
+        // std::set<unsigned> nearby_node_indices;
+        // for (std::set<unsigned>::iterator node_iter = coarse_mesh_boundary_node_indices.begin();
+        //     node_iter != coarse_mesh_boundary_node_indices.end();
+        //     ++node_iter)
+        // {
+        //     bool remove_node = false;
 
+        //     c_vector<double,DIM> node_location = this->mpFeMesh->GetNode(*node_iter)->rGetLocation();
 
-            double tissue_radius = 0.0;
-            for (typename AbstractCellPopulation<DIM>::Iterator cell_iter = rCellPopulation.Begin();
-                cell_iter != rCellPopulation.End();
-                ++cell_iter)
-            {
-                const ChastePoint<DIM>& r_position_of_cell = rCellPopulation.GetLocationOfCellCentre(*cell_iter);
+        //     for (typename AbstractCellPopulation<DIM>::Iterator cell_iter = rCellPopulation.Begin();
+        //     cell_iter != rCellPopulation.End();
+        //     ++cell_iter)
+        //     {
+        //         const ChastePoint<DIM>& r_position_of_cell = rCellPopulation.GetLocationOfCellCentre(*cell_iter);
 
-                double radius = norm_2(tissue_centre - r_position_of_cell.rGetLocation());
-                
-                if (tissue_radius < radius)
-                {
-                    tissue_radius = radius;
-                }                
-            }
+        //         double separation = norm_2(node_location - r_position_of_cell.rGetLocation());
 
-            // Apply boundary condition to the nodes outside the tissue_radius
-            if (this->IsNeumannBoundaryCondition())
-            {
-                // Neumann BSC not implemented yet for this geometry
-                NEVER_REACHED;
-            }
-            else
-            {
-                // Impose any Dirichlet boundary conditions
-                for (unsigned i=0; i<this->mpFeMesh->GetNumNodes(); i++)
-                {
-                    double radius = norm_2(tissue_centre - this->mpFeMesh->GetNode(i)->rGetLocation());
-                    
-                    if (radius > tissue_radius)
-                    {
-                        pBcc->AddDirichletBoundaryCondition(this->mpFeMesh->GetNode(i), this->mpBoundaryCondition.get(), 0, false);
-                        this->mIsDirichletBoundaryNode[i] = 1.0;
-                    }
-                }
-            }
-        }
-        // Here apply the dirichlet conditions to nodes outside the convex hull of the cell centres 
-        // (i.e its applied outside the mesh thats formed by the cetres)
-        else if (this->mSetBcsOnConvexHull) 
-        {
-            // Can't apply on the convex hull and bounding sphere at same time 
-            if(this->mSetBcsOnBoundingSphere)
-            {
-                NEVER_REACHED;
-            }
+        //         if (separation <= mTypicalCellRadius)
+        //         {
+        //             remove_node = true;
+        //             break;
+        //         }                
+        //     }
 
-            // Apply boundary condition to the nodes outside the convex hull
-            if (this->IsNeumannBoundaryCondition())
-            {
-                // Neumann BSC not implemented yet for this geometry
-                NEVER_REACHED;
-            }
-            else
-            {
-                TetrahedralMesh<DIM,DIM>* p_convex_mesh = rCellPopulation.GetTetrahedralMeshForPdeModifier();
+        //     if (remove_node)
+        //     {
+        //         // Node near cell so set it to be removed from boundary set
+        //         nearby_node_indices.insert(*node_iter);
+        //     }
+        // }
 
-                // Impose any Dirichlet boundary conditions
-                for (unsigned i=0; i<this->mpFeMesh->GetNumNodes(); i++)
-                {
-                    std::vector<unsigned> containing_element_indices = p_convex_mesh->GetContainingElementIndices(this->mpFeMesh->GetNode(i)->rGetLocation());
-
-                    if (containing_element_indices.size()==0u)
-                    {
-                        pBcc->AddDirichletBoundaryCondition(this->mpFeMesh->GetNode(i), this->mpBoundaryCondition.get(), 0, false);
-                        this->mIsDirichletBoundaryNode[i] = 1.0;
-                    }
-                }
-            }
-        }
-        else // Set pde nodes as boundary node if elements dont contain cells or nodes aren't within a specified distance of a cell centre
-        {
-            // Get the set of coarse element indices that contain cells
-            std::set<unsigned> coarse_element_indices_in_map;
-            for (typename AbstractCellPopulation<DIM>::Iterator cell_iter = rCellPopulation.Begin();
-                cell_iter != rCellPopulation.End();
-                ++cell_iter)
-            {
-                coarse_element_indices_in_map.insert(this->mCellPdeElementMap[*cell_iter]);
-            }
-
-            // Find the node indices associated with elements whose indices are NOT in the set coarse_element_indices_in_map
-            std::set<unsigned> coarse_mesh_boundary_node_indices;
-            for (unsigned i=0; i<this->mpFeMesh->GetNumElements(); i++)
-            {
-                if (coarse_element_indices_in_map.find(i) == coarse_element_indices_in_map.end())
-                {
-                    Element<DIM,DIM>* p_element = this->mpFeMesh->GetElement(i);
-                    for (unsigned j=0; j<DIM+1; j++)
-                    {
-                        unsigned node_index = p_element->GetNodeGlobalIndex(j);
-                        coarse_mesh_boundary_node_indices.insert(node_index);
-                    }
-                }
-            }
-
-            // Also remove nodes that are within the typical cell radius from the centre of a cell.
-            std::set<unsigned> nearby_node_indices;
-            for (std::set<unsigned>::iterator node_iter = coarse_mesh_boundary_node_indices.begin();
-                node_iter != coarse_mesh_boundary_node_indices.end();
-                ++node_iter)
-            {
-                bool remove_node = false;
-
-                c_vector<double,DIM> node_location = this->mpFeMesh->GetNode(*node_iter)->rGetLocation();
-
-                for (typename AbstractCellPopulation<DIM>::Iterator cell_iter = rCellPopulation.Begin();
-                cell_iter != rCellPopulation.End();
-                ++cell_iter)
-                {
-                    const ChastePoint<DIM>& r_position_of_cell = rCellPopulation.GetLocationOfCellCentre(*cell_iter);
-
-                    double separation = norm_2(node_location - r_position_of_cell.rGetLocation());
-
-                    if (separation <= mTypicalCellRadius)
-                    {
-                        remove_node = true;
-                        break;
-                    }                
-                }
-
-                if (remove_node)
-                {
-                    // Node near cell so set it to be removed from boundary set
-                    nearby_node_indices.insert(*node_iter);
-                }
-            }
-
-            // Remove nodes that are near cells from boundary set
-            for (std::set<unsigned>::iterator node_iter = nearby_node_indices.begin();
-                node_iter != nearby_node_indices.end();
-                ++node_iter)
-            {
-                coarse_mesh_boundary_node_indices.erase(*node_iter);
-            }
+        // // Remove nodes that are near cells from boundary set
+        // for (std::set<unsigned>::iterator node_iter = nearby_node_indices.begin();
+        //     node_iter != nearby_node_indices.end();
+        //     ++node_iter)
+        // {
+        //     coarse_mesh_boundary_node_indices.erase(*node_iter);
+        // }
 
 
-            // Apply boundary condition to the nodes in the set coarse_mesh_boundary_node_indices
-            if (this->IsNeumannBoundaryCondition())
-            {
-                // Neumann BSC not implemented yet for this geometry
-                NEVER_REACHED;
-            }
-            else
-            {
-                // Impose any Dirichlet boundary conditions
-                for (std::set<unsigned>::iterator iter = coarse_mesh_boundary_node_indices.begin();
-                    iter != coarse_mesh_boundary_node_indices.end();
-                    ++iter)
-                {
-                    pBcc->AddDirichletBoundaryCondition(this->mpFeMesh->GetNode(*iter), this->mpBoundaryCondition.get(), 0, false);
-                    this->mIsDirichletBoundaryNode[*iter] = 1.0;
-                }
-            }
-        }
+        // // Apply boundary condition to the nodes in the set coarse_mesh_boundary_node_indices
+        // if (this->IsNeumannBoundaryCondition())
+        // {
+        //     // Neumann BSC not implemented yet for this geometry
+        //     NEVER_REACHED;
+        // }
+        // else
+        // {
+        //     // Impose any Dirichlet boundary conditions
+        //     for (std::set<unsigned>::iterator iter = coarse_mesh_boundary_node_indices.begin();
+        //         iter != coarse_mesh_boundary_node_indices.end();
+        //         ++iter)
+        //     {
+        //         pBcc->AddDirichletBoundaryCondition(this->mpFeMesh->GetNode(*iter), this->mpBoundaryCondition.get(), 0, false);
+        //         this->mIsDirichletBoundaryNode[*iter] = 1.0;
+        //     }
+        // }
+        
     }
     else // Apply BC at boundary of box domain FE mesh
     {
@@ -381,7 +228,7 @@ void AbstractPottsPdeModifier<DIM>::SetupSolve(AbstractCellPopulation<DIM,DIM>& 
 {
     AbstractPdeModifier<DIM>::SetupSolve(rCellPopulation, outputDirectory);
 
-    InitialiseCellPdeElementMap(rCellPopulation);
+    // InitialiseCellPdeElementMap(rCellPopulation);
 }
 
 template<unsigned DIM>
@@ -389,13 +236,15 @@ void AbstractPottsPdeModifier<DIM>::GenerateFeMesh(boost::shared_ptr<ChasteCuboi
 {
     // Create a regular coarse tetrahedral mesh
     this->mpFeMesh = new TetrahedralMesh<DIM,DIM>();
-    
+//TODO change to use the PottsMesh
     GenerateAndReturnFeMesh(pMeshCuboid, stepSize, this->mpFeMesh);
 }
 
 template<unsigned DIM>
 void AbstractPottsPdeModifier<DIM>::GenerateAndReturnFeMesh(boost::shared_ptr<ChasteCuboid<DIM> > pMeshCuboid, double stepSize, TetrahedralMesh<DIM,DIM>* pMesh)
 {
+//TODO change to use the PottsMesh
+
     // Create a regular coarse tetrahedral mesh
     switch (DIM)
     {
@@ -432,179 +281,39 @@ void AbstractPottsPdeModifier<DIM>::GenerateAndReturnFeMesh(boost::shared_ptr<Ch
 template<unsigned DIM>
 void AbstractPottsPdeModifier<DIM>::UpdateCellData(AbstractCellPopulation<DIM,DIM>& rCellPopulation)
 {
+    PottsMesh<DIM>* p_static_cast_mesh = static_cast<PottsMesh<DIM>*>(&(rCellPopulation.rGetMesh()));
+    
     // Store the PDE solution in an accessible form
     ReplicatableVector solution_repl(this->mSolution);
 
-    if (mUseVoronoiCellsForInterpolation) 
-    {
-        NEVER_REACHED;
-        unsigned num_nodes = rCellPopulation.GetNumNodes();
-
-        std::vector<double> cell_data(num_nodes, -1);
-        std::vector<unsigned> num_cells(num_nodes, -1);
-        
-        for (typename AbstractCellPopulation<DIM>::Iterator cell_iter = rCellPopulation.Begin();
-            cell_iter != rCellPopulation.End();
-            ++cell_iter)
-        {
-            unsigned cell_location_index = rCellPopulation.GetLocationIndexUsingCell(*cell_iter);
-            cell_data[cell_location_index]=0.0;
-            num_cells[cell_location_index]=0;    
-        }
-
-        // Loop over nodes of the finite element mesh and work out which voronoi region the node is in.
-        for (typename TetrahedralMesh<DIM,DIM>::NodeIterator node_iter = this->mpFeMesh->GetNodeIteratorBegin();
-                node_iter != this->mpFeMesh->GetNodeIteratorEnd();
-                ++node_iter)
-        {
-            unsigned node_index = node_iter->GetIndex();
-
-            c_vector<double,DIM> node_location = node_iter->rGetLocation();
-
-            double closest_separation = DBL_MAX;
-            unsigned nearest_cell = UNSIGNED_UNSET;
-
-            for (typename AbstractCellPopulation<DIM>::Iterator cell_iter = rCellPopulation.Begin();
-                cell_iter != rCellPopulation.End();
-                ++cell_iter)
-            {
-                c_vector<double, DIM> cell_location = rCellPopulation.GetLocationOfCellCentre(*cell_iter);
-
-                double separation = norm_2(node_location - cell_location);
-
-                if (separation < closest_separation)
-                {
-                    closest_separation = separation;
-                    nearest_cell = rCellPopulation.GetLocationIndexUsingCell(*cell_iter);
-                }                
-            }
-            assert(closest_separation<DBL_MAX);
-
-            cell_data[nearest_cell] = cell_data[nearest_cell] + solution_repl[node_index];
-            num_cells[nearest_cell] = num_cells[nearest_cell] + 1;
-        }   
-        
-        // Now calculate the solution in the cell by averaging over all nodes in the voronoi region.
-        for (typename AbstractCellPopulation<DIM>::Iterator cell_iter = rCellPopulation.Begin();
+    for (typename AbstractCellPopulation<DIM>::Iterator cell_iter = rCellPopulation.Begin();
         cell_iter != rCellPopulation.End();
         ++cell_iter)
+    {
+        // The cells are not nodes of the mesh, so we must loop over all contained nodes 
+        double solution_at_cell = 0.0;
+    
+        unsigned cell_location_index = rCellPopulation.GetLocationIndexUsingCell(*cell_iter);
+        
+        PottsElement<DIM>* p_element = p_static_cast_mesh->GetElement(cell_location_index);
+        
+        unsigned num_nodes_in_element = p_element->GetNumNodes();
+
+        for (unsigned local_index=0; local_index<num_nodes_in_element; local_index++)
         {
-            unsigned cell_location_index = rCellPopulation.GetLocationIndexUsingCell(*cell_iter);   
-
-            
-            if (num_cells[cell_location_index]==0)
-            {
-                EXCEPTION("One or more of the cells doesnt contain any pde nodes so cant use voroni CellData calculation in the ");
-            }
-
-            double  solution_at_cell = cell_data[cell_location_index]/num_cells[cell_location_index];
-            
-            cell_iter->GetCellData()->SetItem(this->mDependentVariableName, solution_at_cell);
+            // Find location of current node and add it to the centroid
+            solution_at_cell += solution_repl[p_element->GetNodeGlobalIndex(local_index)];
         }
 
-        if (this->mOutputGradient)
-        {
-            // This isnt implemented yet
-            NEVER_REACHED;
-        }
-    }  
-    else // Interpolate solutions 
+        solution_at_cell = solution_at_cell/num_nodes_in_element;
+
+        cell_iter->GetCellData()->SetItem(this->mDependentVariableName, solution_at_cell);
+    }   
+
+    if (this->mOutputGradient)
     {
-        for (typename AbstractCellPopulation<DIM>::Iterator cell_iter = rCellPopulation.Begin();
-            cell_iter != rCellPopulation.End();
-            ++cell_iter)
-        {
-            // The cells are not nodes of the mesh, so we must interpolate
-            double solution_at_cell = 0.0;
-
-            // Find the element in the FE mesh that contains this cell. CellElementMap has been updated so use this.
-            unsigned elem_index = mCellPdeElementMap[*cell_iter];
-            Element<DIM,DIM>* p_element = this->mpFeMesh->GetElement(elem_index);
-
-            const ChastePoint<DIM>& node_location = rCellPopulation.GetLocationOfCellCentre(*cell_iter);
-
-            c_vector<double,DIM+1> weights = p_element->CalculateInterpolationWeights(node_location);
-
-            for (unsigned i=0; i<DIM+1; i++)
-            {
-                double nodal_value = solution_repl[p_element->GetNodeGlobalIndex(i)];
-                solution_at_cell += nodal_value * weights(i);
-            }
-
-            cell_iter->GetCellData()->SetItem(this->mDependentVariableName, solution_at_cell);
-
-            if (this->mOutputGradient)
-            {
-                // Now calculate the gradient of the solution and store this in CellVecData
-                c_vector<double, DIM> solution_gradient = zero_vector<double>(DIM);
-
-                // Calculate the basis functions at any point (e.g. zero) in the element
-                c_matrix<double, DIM, DIM> jacobian, inverse_jacobian;
-                double jacobian_det;
-                this->mpFeMesh->GetInverseJacobianForElement(elem_index, jacobian, jacobian_det, inverse_jacobian);
-                const ChastePoint<DIM> zero_point;
-                c_matrix<double, DIM, DIM+1> grad_phi;
-                LinearBasisFunction<DIM>::ComputeTransformedBasisFunctionDerivatives(zero_point, inverse_jacobian, grad_phi);
-
-                for (unsigned node_index=0; node_index<DIM+1; node_index++)
-                {
-                    double nodal_value = solution_repl[p_element->GetNodeGlobalIndex(node_index)];
-
-                    for (unsigned j=0; j<DIM; j++)
-                    {
-                        solution_gradient(j) += nodal_value* grad_phi(j, node_index);
-                    }
-                }
-
-                switch (DIM)
-                {
-                    case 1:
-                        cell_iter->GetCellData()->SetItem(this->mDependentVariableName+"_grad_x", solution_gradient(0));
-                        break;
-                    case 2:
-                        cell_iter->GetCellData()->SetItem(this->mDependentVariableName+"_grad_x", solution_gradient(0));
-                        cell_iter->GetCellData()->SetItem(this->mDependentVariableName+"_grad_y", solution_gradient(1));
-                        break;
-                    case 3:
-                        cell_iter->GetCellData()->SetItem(this->mDependentVariableName+"_grad_x", solution_gradient(0));
-                        cell_iter->GetCellData()->SetItem(this->mDependentVariableName+"_grad_y", solution_gradient(1));
-                        cell_iter->GetCellData()->SetItem(this->mDependentVariableName+"_grad_z", solution_gradient(2));
-                        break;
-                    default:
-                        NEVER_REACHED;
-                }
-            }
-        }
-    }     
-}
-
-template<unsigned DIM>
-void AbstractPottsPdeModifier<DIM>::InitialiseCellPdeElementMap(AbstractCellPopulation<DIM,DIM>& rCellPopulation)
-{
-    mCellPdeElementMap.clear();
-
-    // Find the element of mpFeMesh that contains each cell and populate mCellPdeElementMap
-    for (typename AbstractCellPopulation<DIM>::Iterator cell_iter = rCellPopulation.Begin();
-         cell_iter != rCellPopulation.End();
-         ++cell_iter)
-    {
-        const ChastePoint<DIM>& r_position_of_cell = rCellPopulation.GetLocationOfCellCentre(*cell_iter);
-        unsigned elem_index = this->mpFeMesh->GetContainingElementIndex(r_position_of_cell);
-        mCellPdeElementMap[*cell_iter] = elem_index;
-    }
-}
-
-template<unsigned DIM>
-void AbstractPottsPdeModifier<DIM>::UpdateCellPdeElementMap(AbstractCellPopulation<DIM,DIM>& rCellPopulation)
-{
-    // Find the element of mpCoarsePdeMesh that contains each cell and populate mCellPdeElementMap
-    for (typename AbstractCellPopulation<DIM>::Iterator cell_iter = rCellPopulation.Begin();
-         cell_iter != rCellPopulation.End();
-         ++cell_iter)
-    {
-        const ChastePoint<DIM>& r_position_of_cell = rCellPopulation.GetLocationOfCellCentre(*cell_iter);
-        unsigned elem_index = this->mpFeMesh->GetContainingElementIndexWithInitialGuess(r_position_of_cell, mCellPdeElementMap[*cell_iter]);
-        mCellPdeElementMap[*cell_iter] = elem_index;
+        // See other PDE Modifiers for how to implement. 
+        NEVER_REACHED;
     }
 }
 
