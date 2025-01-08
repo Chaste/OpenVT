@@ -74,21 +74,26 @@ public:
     void TestMonolayer()
     {
         
-        double M_DOMAIN_WIDTH = 50.0;
+        double M_DOMAIN_WIDTH = 150.0; //500
         double M_DUDT_COEFICIENT = 1.0;
-        double M_DIFFUSION_COEFICIENT = 1e-1; //1e-3
+        double M_DIFFUSION_COEFICIENT = 1e-4; //1e-3
         double M_CONSTANT_CELL_SECRETION = 1e-2; //1e-3
-        double M_LINEAR_SECRETION = 1e-1; //1e-3
-        double M_TARGET_CELL_VOLUME = 25;
-        double M_TARGET_CELL_SURFACE_AREA = 16;
-        double box_h = 1.0;
-        double dt = 0.01;
-        double end_time = 10.0;
-        double temperature = 10;
+        double M_LINEAR_SECRETION = 1e0; //1e-3
+        double M_TARGET_CELL_VOLUME = 16;
+        double M_CHEMOTAXIS_PARAMETER = 50000;
+        // double M_TARGET_CELL_SURFACE_AREA = 16;
+        double dt = 1.0/120;
+        double end_time = 2.0;
+        unsigned output_timesteps = 12u;
+        double temperature = 25;
 
         EXIT_IF_PARALLEL;
 
-        PottsMeshGenerator<2> generator((int) M_DOMAIN_WIDTH, 4, 5, (int) M_DOMAIN_WIDTH, 4, 5, 1, 1, 1, 4u);  
+        unsigned initial_cell_width = 4u;
+        unsigned initial_separation = 2u;
+        unsigned initial_num_cells = 16u; // 32u
+
+        PottsMeshGenerator<2> generator((int) M_DOMAIN_WIDTH, initial_num_cells, initial_cell_width, (int) M_DOMAIN_WIDTH, initial_num_cells, initial_cell_width, 1, 1, 1, initial_separation);  
         boost::shared_ptr<PottsMesh<2> > p_mesh = generator.GetMesh();
 
         std::vector<CellPtr> cells;
@@ -104,18 +109,17 @@ public:
         simulator.SetOutputDirectory("PottsBasedMonolayer");
         simulator.SetEndTime(end_time);
         simulator.SetDt(dt);
-        simulator.SetSamplingTimestepMultiple(10);
+        simulator.SetSamplingTimestepMultiple(output_timesteps);
 
         MAKE_PTR(VolumeConstraintPottsUpdateRule<2>, p_volume_constraint_update_rule);
         p_volume_constraint_update_rule->SetMatureCellTargetVolume(M_TARGET_CELL_VOLUME);
         p_volume_constraint_update_rule->SetDeformationEnergyParameter(25);
-        
         simulator.AddUpdateRule(p_volume_constraint_update_rule);
         
-        MAKE_PTR(SurfaceAreaConstraintPottsUpdateRule<2>, p_surface_area_update_rule);
-        p_surface_area_update_rule->SetMatureCellTargetSurfaceArea(M_TARGET_CELL_SURFACE_AREA);
-        p_surface_area_update_rule->SetDeformationEnergyParameter(0.5);
-        simulator.AddUpdateRule(p_surface_area_update_rule);
+        // MAKE_PTR(SurfaceAreaConstraintPottsUpdateRule<2>, p_surface_area_update_rule);
+        // p_surface_area_update_rule->SetMatureCellTargetSurfaceArea(M_TARGET_CELL_SURFACE_AREA);
+        // p_surface_area_update_rule->SetDeformationEnergyParameter(0.5);
+        // simulator.AddUpdateRule(p_surface_area_update_rule);
 
         MAKE_PTR(ExtendedAdhesionPottsUpdateRule<2>, p_adhesion_update_rule);
         p_adhesion_update_rule->SetCellCellAdhesionEnergyParameter(40);
@@ -124,7 +128,7 @@ public:
         simulator.AddUpdateRule(p_adhesion_update_rule);
 
         MAKE_PTR(VegfChemotaxisPottsUpdateRule<2>, p_chemotaxis_update_rule);
-        //p_chemotaxis_update_rule->SetChemotaxisParameter(40);
+        p_chemotaxis_update_rule->SetChemotaxisParameter(M_CHEMOTAXIS_PARAMETER);
         simulator.AddUpdateRule(p_chemotaxis_update_rule);
 
         // Set initial conditions
@@ -153,7 +157,7 @@ public:
 
         // Create a PDE modifier and set the name of the dependent variable in the PDE
         bool is_neuman_bcs = false;
-        
+        double box_h = 1.0; // to match with PottsMesh
         MAKE_PTR_ARGS(ParabolicPottsPdeModifier<2>, p_pde_modifier, (p_pde, p_bc, is_neuman_bcs, p_cuboid, box_h));
         //MAKE_PTR_ARGS(EllipticPottsPdeModifier<2>, p_pde_modifier, (p_pde, p_bc, is_neuman_bcs, p_cuboid, box_h));
         p_pde_modifier->SetDependentVariableName("VEGF");

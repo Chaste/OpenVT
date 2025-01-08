@@ -38,7 +38,8 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 template<unsigned DIM>
 VegfChemotaxisPottsUpdateRule<DIM>::VegfChemotaxisPottsUpdateRule()
-    : AbstractPottsUpdateRule<DIM>()
+    : AbstractPottsUpdateRule<DIM>(),
+      mChemotaxisParameter(10.0) // Educated guess
 {
 }
 
@@ -52,10 +53,6 @@ double VegfChemotaxisPottsUpdateRule<DIM>::EvaluateHamiltonianContribution(unsig
                                                                         unsigned targetNodeIndex,
                                                                         PottsBasedCellPopulation<DIM>& rCellPopulation)
 {
-    double CellBoundaryChemotaxisParameter = 5000.0;
-    //double CellCellChemotaxisParameter = 0.0;
-
-
     std::set<unsigned> containing_elements = rCellPopulation.GetNode(currentNodeIndex)->rGetContainingElementIndices();
     std::set<unsigned> new_location_containing_elements = rCellPopulation.GetNode(targetNodeIndex)->rGetContainingElementIndices();
 
@@ -87,15 +84,30 @@ double VegfChemotaxisPottsUpdateRule<DIM>::EvaluateHamiltonianContribution(unsig
         double target_vegf = rCellPopulation.GetPdeSolutionAtNode(targetNodeIndex);
 //PRINT_2_VARIABLES(current_vegf,target_vegf);
 
-        delta_H = CellBoundaryChemotaxisParameter * (current_vegf - target_vegf);
+        delta_H = mChemotaxisParameter * (current_vegf - target_vegf);
 
     }
     return delta_H;
 }
 
 template<unsigned DIM>
+double VegfChemotaxisPottsUpdateRule<DIM>::GetChemotaxisParameter()
+{
+    return mChemotaxisParameter;
+}
+
+template<unsigned DIM>
+void VegfChemotaxisPottsUpdateRule<DIM>::SetChemotaxisParameter(double chemotaxisParameter)
+{
+    mChemotaxisParameter = chemotaxisParameter;
+}
+
+
+template<unsigned DIM>
 void VegfChemotaxisPottsUpdateRule<DIM>::OutputUpdateRuleParameters(out_stream& rParamsFile)
 {
+    *rParamsFile << "\t\t\t<ChemotaxisParameter>" << mChemotaxisParameter << "</ChemotaxisParameter>\n";
+
     // Call method on direct parent class
     AbstractPottsUpdateRule<DIM>::OutputUpdateRuleParameters(rParamsFile);
 }

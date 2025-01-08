@@ -124,7 +124,7 @@ double ExtendedAdhesionPottsUpdateRule<DIM>::EvaluateHamiltonianContribution(uns
         // First check if the target node is a boundary node as if it is thid is the main iteraction.
         if (target_node_is_boundary_node)
         {
-            delta_H += 10000000;//mCellBoundaryNodeAdhesionEnergyParameter;
+            delta_H += mCellBoundaryNodeAdhesionEnergyParameter;
         }
         else
         {
