@@ -53,21 +53,23 @@ void TissueWidthWriter<ELEMENT_DIM, SPACE_DIM>::VisitAnyPopulation(AbstractCellP
 {
     double max_width =-2000000;
     double min_width = 2000000;
-    for (typename AbstractMesh<SPACE_DIM, SPACE_DIM>::NodeIterator node_iter = pCellPopulation->rGetMesh().GetNodeIteratorBegin();
-         node_iter != pCellPopulation->rGetMesh().GetNodeIteratorEnd();
-         ++node_iter)
+    
+    for (typename AbstractCellPopulation<SPACE_DIM>::Iterator cell_iter = pCellPopulation->Begin();
+        cell_iter != pCellPopulation->End();
+        ++cell_iter)
     {
-        if (!node_iter->IsDeleted())
+        const ChastePoint<SPACE_DIM>& r_position_of_cell = pCellPopulation->GetLocationOfCellCentre(*cell_iter);
+        
+        if(r_position_of_cell[0] > max_width)
         {
-            const c_vector<double,SPACE_DIM>& position = node_iter->rGetLocation();
-            if(position[0] > max_width){
-                max_width = position[0];
-            }
-            if(position[0] < min_width){
-                min_width =position[0];
-            }
+            max_width = r_position_of_cell[0];
+        }
+        if(r_position_of_cell[0] < min_width)
+        {
+            min_width = r_position_of_cell[0];
         }
     }
+    
     double tissue_width = (max_width - min_width)*20 + 10; // outputs tissue diameter in um and the number of cells
     unsigned int num_cells = pCellPopulation->GetNumRealCells();
     *this->mpOutStream << min_width << "," << max_width << "," << tissue_width << "," << num_cells << "\n";

@@ -87,7 +87,6 @@ private:
        archive & mLinearSourceCoefficient;
        archive & mDiffusionCoefficient;
        archive & mDuDtCoefficient;
-       archive & mScaleByCellVolume;
        archive & mCellDensityOnCoarseElements;
     }
 
@@ -113,9 +112,6 @@ protected:
 
     /** Coefficient of rate of change term.  */
     double mDuDtCoefficient;
-    
-    /** Whether to scale tems by cell volume*/
-    bool mScaleByCellVolume;
 
     /** Vector of averaged cell densities on elements of the coarse mesh. */
     std::vector<double> mCellDensityOnCoarseElements;
@@ -132,7 +128,6 @@ public:
      * @param linearSourceCoefficient the linear source term coefficient (defaults to 0.0)
      * @param diffusionCoefficient the rate of diffusion (defaults to 1.0)
      * @param duDtCoefficient rate of reaction (defaults to 1.0)
-     * @param scaleByCellVolume whether to scale by cell volume (defaults to false)
      */
     PottsParabolicPde(PottsBasedCellPopulation<DIM>& rCellPopulation,
                                double constantCellSourceCoefficient=0.0, 
@@ -140,8 +135,7 @@ public:
                                double constantSourceCoefficient=0.0, 
                                double linearSourceCoefficient=0.0,
                                double diffusionCoefficient=1.0,
-                               double duDtCoefficient=1.0,
-                               bool scaleByCellVolume=false);
+                               double duDtCoefficient=1.0);
 
     /**
      * @return const reference to the cell population (used in archiving).
@@ -177,11 +171,6 @@ public:
      * @return mDuDtCoefficient
      */
     double GetDuDtCoefficient() const;
-
-    /**
-     * @return mScaleByCellVolume
-     */
-    bool GetScaleByCellVolume() const;
 
     /**
      * Set up the source terms.
