@@ -78,7 +78,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "PlaneBoundaryCondition.hpp"
 
-#include "PottsMeshGenerator.hpp"
+#include "PottsMeshGeneratorExtended.hpp"
 #include "OnLatticeSimulation.hpp"
 #include "PottsBasedCellPopulation.hpp"
 #include "VolumeConstraintPottsUpdateRule.hpp"
@@ -91,6 +91,8 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "PetscSetupAndFinalize.hpp"
 
+#include "Debug.hpp"
+
 
 class Test02aMonlayerGrowth1dExamples : public AbstractCellBasedWithTimingsTestSuite
 {
@@ -101,10 +103,10 @@ public:
 
     void Test1dNodeChainCompression()
     {
-        double end_time = 20.0;
+        double end_time = 5.0;
         double dt = 0.01;
-        unsigned output_timesteps = 5;
-		    double spring_stiffness = 50.0;
+        unsigned output_timesteps = 1;
+		double spring_stiffness = 50.0/3.0;
         //double compression = 0.5;
         //unsigned num_cells = 10;
         std::string base_type = "Test02MonlayerGrowthGrowth1d/Mesh";
@@ -121,11 +123,11 @@ public:
 
             if(tissue_type.compare("HomogeneousChain")==0)
             {
-                mesh_string = "projects/OpenVT/src/Test02MonolayerGrowth/1D_10_nodes";
+                mesh_string = "projects/OpenVT/src/Test02MonolayerGrowth/1D_11_nodes";
             }
             else if(tissue_type.compare("HeterogeneousChain")==0)
             {
-                mesh_string = "projects/OpenVT/src/Test02MonolayerGrowth/1D_10_plus_10_nodes";
+                mesh_string = "projects/OpenVT/src/Test02MonolayerGrowth/1D_11_plus_10_nodes";
             }
             else
             {
@@ -158,13 +160,13 @@ public:
             p_linear_force->SetCutOffLength(1.5);
             simulator.AddForce(p_linear_force);
 
-            // Create a boundary condition for the left end 
-            c_vector<double,1> point = zero_vector<double>(1);
-            c_vector<double,1> normal = zero_vector<double>(1);
-            point(0) = 0.5;
-            normal(0) = -1.0;
-            MAKE_PTR_ARGS(PlaneBoundaryCondition<1>, p_bcs, (&cell_population, point, normal)); // y>0.5
-            simulator.AddCellPopulationBoundaryCondition(p_bcs);
+            // // Create a boundary condition for the left end 
+            // c_vector<double,1> point = zero_vector<double>(1);
+            // c_vector<double,1> normal = zero_vector<double>(1);
+            // point(0) = 0.5;
+            // normal(0) = -1.0;
+            // MAKE_PTR_ARGS(PlaneBoundaryCondition<1>, p_bcs, (&cell_population, point, normal)); // y>0.5
+            // simulator.AddCellPopulationBoundaryCondition(p_bcs);
         
             simulator.Solve();
 
@@ -178,100 +180,124 @@ public:
 
 
 
-    void NoTest1dPottsChainCompression()
+    void noTest1dPottsChainCompression()
     {
-        double end_time = 20.0;
-		    double dt = 0.02;
-        unsigned output_timesteps = 5;
+        unsigned start_index = 0;
+        unsigned num_runs = 10;
+        
+        double end_time = 5.0;//1.0;
+		double dt = 0.025; // EDITED TO MAKE HIT 9CD AT 1HR
+        unsigned output_timesteps = 4;
         
         double target_area = 50.0;
         double target_area_parameter = 20.0;
         
         double temperature = 20;
 
-        unsigned domain_length = 500;
+        unsigned domain_length = 250;
         unsigned domain_width = 5;
         unsigned initial_cell_length = 5;
 
         //double compression = 0.5;
-        unsigned num_cells = 10;
-        unsigned half_num_cells = 0.5*num_cells;
-
+        unsigned num_cells = 11;
+        unsigned num_edge_cells = 5;
+       
         std::string base_type = "Test02MonlayerGrowthGrowth1d/Potts";
 
         std::string tissue_types[2] = {"HomogeneousChain","HeterogeneousChain"};
 
-        for (unsigned tissue_type_index = 0; tissue_type_index != 2; tissue_type_index++)
-        {
-            std::string tissue_type = tissue_types[tissue_type_index];
+         // Loop over the random seed.
+		for(unsigned sim_index=start_index; sim_index < start_index + num_runs; sim_index++)
+		{
+			std::cout << " Run number " << sim_index << "... \n" << std::flush;
 
-            std::string output_dir = base_type + "/" + tissue_type;
+			// Reseed the random number generator
+			RandomNumberGenerator* p_gen = RandomNumberGenerator::Instance();
+			p_gen->Reseed(sim_index);
 
-            std::string mesh_string;
-
-            boost::shared_ptr<PottsMesh<2> > p_mesh;
-
-            if(tissue_type.compare("HomogeneousChain")==0)
-            {
-                PottsMeshGenerator<2> generator(domain_width, 1u, domain_width, domain_length, num_cells, initial_cell_length,  1, 1, 1, 0, true, true, false, false);  
-                p_mesh = generator.GetMesh();
-            }
-            else if(tissue_type.compare("HeterogeneousChain")==0)
-            {
-                PottsMeshGenerator<2> generator(domain_width, 1u, domain_width, domain_length, half_num_cells + num_cells, 2*initial_cell_length, 1, 1, 1, 0,true, true, false, false);
-                p_mesh = generator.GetMesh();
-                // Now divide first half_num_cells
-                for (unsigned elem_index = 0; elem_index<half_num_cells; elem_index++)
-                {
-                    unsigned new_element_index = p_mesh->DivideElement(p_mesh->GetElement(elem_index), true);
-                    if(new_element_index > p_mesh->GetNumAllElements())
-                    {
-                      NEVER_REACHED;  
-                    }
-                }
-            }
-            else
-            {
-                NEVER_REACHED;
-            }
-
-            // Create cells
-            std::vector<CellPtr> cells;
-            MAKE_PTR(DifferentiatedCellProliferativeType, p_differentiated_type);
-            CellsGenerator<FixedDurationCellCycleModel, 2> cells_generator;
-            cells_generator.GenerateBasicRandom(cells, p_mesh->GetNumElements(), p_differentiated_type);
-
-            PottsBasedCellPopulation<2> cell_population(*p_mesh, cells);
-            cell_population.SetTemperature(temperature);
-            cell_population.SetNumSweepsPerTimestep(1);
-            cell_population.AddCellWriter<CellCentreLocationWriter>();
-
-            OnLatticeSimulation<2> simulator(cell_population);
-            simulator.SetOutputDirectory(output_dir);
-            simulator.SetEndTime(end_time);
-            simulator.SetDt(dt);
-            simulator.SetSamplingTimestepMultiple(output_timesteps);
-
-            MAKE_PTR(VolumeConstraintPottsUpdateRule<2>, p_volume_constraint_update_rule);
-            p_volume_constraint_update_rule->SetMatureCellTargetVolume(target_area);
-            p_volume_constraint_update_rule->SetDeformationEnergyParameter(target_area_parameter);
-            simulator.AddUpdateRule(p_volume_constraint_update_rule);
-            
-            // MAKE_PTR(SurfaceAreaConstraintPottsUpdateRule<2>, p_surface_area_update_rule);
-            // p_surface_area_update_rule->SetMatureCellTargetSurfaceArea(M_TARGET_CELL_SURFACE_AREA);
-            // p_surface_area_update_rule->SetDeformationEnergyParameter(0.5);
-            // simulator.AddUpdateRule(p_surface_area_update_rule);
-
-            MAKE_PTR(AdhesionPottsUpdateRule<2>, p_adhesion_update_rule);
-            p_adhesion_update_rule->SetCellCellAdhesionEnergyParameter(20);
-            p_adhesion_update_rule->SetCellBoundaryAdhesionEnergyParameter(20);
-            simulator.AddUpdateRule(p_adhesion_update_rule);
+			std::stringstream sim_index_ss;
+			sim_index_ss << "Run" << sim_index;
+            std::string sim_index_string = sim_index_ss.str();
         
-            simulator.Solve();
+            for (unsigned tissue_type_index = 0; tissue_type_index != 2; tissue_type_index++)
+            {
+                std::string tissue_type = tissue_types[tissue_type_index];
 
-            // Reset for next simulation
-            SimulationTime::Instance()->Destroy();
-            SimulationTime::Instance()->SetStartTime(0.0);
+                std::string output_dir = base_type + "/" + sim_index_string + "/" + tissue_type;
+
+                std::string mesh_string;
+
+                boost::shared_ptr<PottsMesh<2> > p_mesh;
+
+                if(tissue_type.compare("HomogeneousChain")==0)
+                {
+                    std::vector<unsigned> cell_lengths(num_cells, initial_cell_length);
+
+                    PottsMeshGeneratorExtended<2> generator(domain_length, num_cells, cell_lengths, domain_width, 1, domain_width,  1, 1, 1, 0, false, false, true, false);  
+                    p_mesh = generator.GetMesh();
+                }
+                else if(tissue_type.compare("HeterogeneousChain")==0)
+                {
+                    std::vector<unsigned> cell_lengths;
+                    for (unsigned i=0; i<num_edge_cells; i++)
+                    {
+                        cell_lengths.push_back(2.0*initial_cell_length);
+                    }
+                    for (unsigned i=0; i<num_cells; i++)
+                    {
+                        cell_lengths.push_back(initial_cell_length);
+                    }
+                    for (unsigned i=0; i<num_edge_cells; i++)
+                    {
+                        cell_lengths.push_back(2.0*initial_cell_length);
+                    }
+
+                    PottsMeshGeneratorExtended<2> generator(domain_length, num_cells + 2*num_edge_cells, cell_lengths, domain_width, 1, domain_width,  1, 1, 1, 0, false, false, true, false);
+                    p_mesh = generator.GetMesh();
+                }
+                else
+                {
+                    NEVER_REACHED;
+                }
+
+                // Create cells
+                std::vector<CellPtr> cells;
+                MAKE_PTR(DifferentiatedCellProliferativeType, p_differentiated_type);
+                CellsGenerator<FixedDurationCellCycleModel, 2> cells_generator;
+                cells_generator.GenerateBasicRandom(cells, p_mesh->GetNumElements(), p_differentiated_type);
+
+                PottsBasedCellPopulation<2> cell_population(*p_mesh, cells);
+                cell_population.SetTemperature(temperature);
+                cell_population.SetNumSweepsPerTimestep(1);
+                cell_population.AddCellWriter<CellCentreLocationWriter>();
+
+                OnLatticeSimulation<2> simulator(cell_population);
+                simulator.SetOutputDirectory(output_dir);
+                simulator.SetEndTime(end_time);
+                simulator.SetDt(dt);
+                simulator.SetSamplingTimestepMultiple(output_timesteps);
+
+                MAKE_PTR(VolumeConstraintPottsUpdateRule<2>, p_volume_constraint_update_rule);
+                p_volume_constraint_update_rule->SetMatureCellTargetVolume(target_area);
+                p_volume_constraint_update_rule->SetDeformationEnergyParameter(target_area_parameter);
+                simulator.AddUpdateRule(p_volume_constraint_update_rule);
+                
+                // MAKE_PTR(SurfaceAreaConstraintPottsUpdateRule<2>, p_surface_area_update_rule);
+                // p_surface_area_update_rule->SetMatureCellTargetSurfaceArea(M_TARGET_CELL_SURFACE_AREA);
+                // p_surface_area_update_rule->SetDeformationEnergyParameter(0.5);
+                // simulator.AddUpdateRule(p_surface_area_update_rule);
+
+                MAKE_PTR(AdhesionPottsUpdateRule<2>, p_adhesion_update_rule);
+                p_adhesion_update_rule->SetCellCellAdhesionEnergyParameter(20);
+                p_adhesion_update_rule->SetCellBoundaryAdhesionEnergyParameter(20);
+                simulator.AddUpdateRule(p_adhesion_update_rule);
+            
+                simulator.Solve();
+
+                // Reset for next simulation
+                SimulationTime::Instance()->Destroy();
+                SimulationTime::Instance()->SetStartTime(0.0);
+            }
         }
 
     }

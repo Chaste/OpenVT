@@ -74,24 +74,29 @@ public:
     void TestMonolayer()
     {
         
-        double M_DOMAIN_WIDTH = 100.0; //500
+        double M_DOMAIN_WIDTH = 100.0; //200
         double M_DUDT_COEFICIENT = 1.0;
-        double M_DIFFUSION_COEFICIENT = 1e-4; //1e-3
-        double M_CONSTANT_CELL_SECRETION = 1e-2; //1e-3
-        double M_LINEAR_SECRETION = 1e0; //1e-3
-        double M_TARGET_CELL_VOLUME = 16;
-        double M_CHEMOTAXIS_PARAMETER = 50000;
+        double M_DIFFUSION_COEFICIENT = 1.0; //1e-4; //1e-3
+        double M_CONSTANT_CELL_SECRETION = 0.3; //1e-2; //1e-3
+        double M_LINEAR_SECRETION = 0.3; //1e0; //1e-3
+        double M_TARGET_CELL_VOLUME = 50;
+        double M_CELL_VOLUME_PARAMETER = 5;
+        //double M_CHEMOTAXIS_PARAMETER = 500; //50000
+        double M_CELLCELL_ADHESION = 2;
+        double M_CELLMEMBRANE_ADHESION = 8;
+        
         // double M_TARGET_CELL_SURFACE_AREA = 16;
-        double dt = 1.0/120;
+        double dt = 1.0/10.0;
         double end_time = 10.0;
-        unsigned output_timesteps = 12u;
-        double temperature = 25;
+        unsigned output_timesteps = 10;
+        double temperature = 5; //25
+        unsigned num_sweeps = 1;
 
         EXIT_IF_PARALLEL;
 
-        unsigned initial_cell_width = 4u;
-        unsigned initial_separation = 4u; //2u
-        unsigned initial_num_cells = 12u; //16u; // 32u
+        unsigned initial_cell_width = 5u;
+        unsigned initial_separation = 0u;//5u; //2u
+        unsigned initial_num_cells = 10u; //20 //16u; // 32u
 
         PottsMeshGenerator<2> generator((int) M_DOMAIN_WIDTH, initial_num_cells, initial_cell_width, (int) M_DOMAIN_WIDTH, initial_num_cells, initial_cell_width, 1, 1, 1, initial_separation, false, true, true, false);  
         boost::shared_ptr<PottsMesh<2> > p_mesh = generator.GetMesh();
@@ -103,7 +108,7 @@ public:
   
         PottsBasedCellPopulation<2> cell_population(*p_mesh, cells);
         cell_population.SetTemperature(temperature);
-        cell_population.SetNumSweepsPerTimestep(1);
+        cell_population.SetNumSweepsPerTimestep(num_sweeps);
         
         OnLatticeSimulation<2> simulator(cell_population);
         simulator.SetOutputDirectory("PottsBasedMonolayer");
@@ -113,7 +118,7 @@ public:
 
         MAKE_PTR(VolumeConstraintPottsUpdateRule<2>, p_volume_constraint_update_rule);
         p_volume_constraint_update_rule->SetMatureCellTargetVolume(M_TARGET_CELL_VOLUME);
-        p_volume_constraint_update_rule->SetDeformationEnergyParameter(25);
+        p_volume_constraint_update_rule->SetDeformationEnergyParameter(M_CELL_VOLUME_PARAMETER);
         simulator.AddUpdateRule(p_volume_constraint_update_rule);
         
         // MAKE_PTR(SurfaceAreaConstraintPottsUpdateRule<2>, p_surface_area_update_rule);
@@ -123,14 +128,14 @@ public:
 
         // MAKE_PTR(ExtendedAdhesionPottsUpdateRule<2>, p_adhesion_update_rule);
         MAKE_PTR(AdhesionPottsUpdateRule<2>, p_adhesion_update_rule);
-        p_adhesion_update_rule->SetCellCellAdhesionEnergyParameter(40);
-        p_adhesion_update_rule->SetCellBoundaryAdhesionEnergyParameter(20);
+        p_adhesion_update_rule->SetCellCellAdhesionEnergyParameter(M_CELLCELL_ADHESION);
+        p_adhesion_update_rule->SetCellBoundaryAdhesionEnergyParameter(M_CELLMEMBRANE_ADHESION);
         // p_adhesion_update_rule->SetCellBoundaryNodeAdhesionEnergyParameter(100);
         simulator.AddUpdateRule(p_adhesion_update_rule);
 
-        MAKE_PTR(VegfChemotaxisPottsUpdateRule<2>, p_chemotaxis_update_rule);
-        p_chemotaxis_update_rule->SetChemotaxisParameter(M_CHEMOTAXIS_PARAMETER);
-        simulator.AddUpdateRule(p_chemotaxis_update_rule);
+        // MAKE_PTR(VegfChemotaxisPottsUpdateRule<2>, p_chemotaxis_update_rule);
+        // p_chemotaxis_update_rule->SetChemotaxisParameter(M_CHEMOTAXIS_PARAMETER);
+        // simulator.AddUpdateRule(p_chemotaxis_update_rule);
 
         // Set initial conditions
         cell_population.SetDataOnAllCells("VEGF", 0.0);
