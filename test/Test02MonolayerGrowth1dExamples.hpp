@@ -68,7 +68,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "DifferentiatedCellProliferativeType.hpp"
 
 #include "NodeBasedCellPopulation.hpp"
-#include "RepulsionForce.hpp"
+#include "QuadraticRepulsionForce.hpp"
 
 #include "VertexBasedCellPopulation.hpp"
 #include "HoneycombVertexMeshGenerator.hpp"
@@ -104,75 +104,99 @@ public:
     void Test1dNodeChainCompression()
     {
         double end_time = 5.0;
-        double dt = 0.01;
-        unsigned output_timesteps = 1;
-		double spring_stiffness = 50.0/3.0;
+        double dt = 0.001;
+        unsigned output_timesteps = 10;
+		double linear_spring_stiffness = 50.0/3.0;
+        double quadratic_spring_stiffness = 50.0/3.0*5.0;
         //double compression = 0.5;
         //unsigned num_cells = 10;
         std::string base_type = "Test02MonlayerGrowthGrowth1d/Mesh";
 
+
+        std::string force_types[2] = {"Linear","Quadratic"};
+
         std::string tissue_types[2] = {"HomogeneousChain","HeterogeneousChain"};
 
-        for (unsigned tissue_type_index = 0; tissue_type_index != 2; tissue_type_index++)
+        for (unsigned force_type_index = 0; force_type_index != 2; force_type_index++)
         {
-            std::string tissue_type = tissue_types[tissue_type_index];
+            std::string force_type = force_types[force_type_index];
 
-            std::string output_dir = base_type + "/" + tissue_type;
-
-            std::string mesh_string;
-
-            if(tissue_type.compare("HomogeneousChain")==0)
+            for (unsigned tissue_type_index = 0; tissue_type_index != 2; tissue_type_index++)
             {
-                mesh_string = "projects/OpenVT/src/Test02MonolayerGrowth/1D_11_nodes";
+                std::string tissue_type = tissue_types[tissue_type_index];
+
+                std::string output_dir = base_type + "_" + force_type + "/" + tissue_type;
+
+                std::string mesh_string;
+
+                if(tissue_type.compare("HomogeneousChain")==0)
+                {
+                    mesh_string = "projects/OpenVT/src/Test02MonolayerGrowth/1D_11_nodes";
+                }
+                else if(tissue_type.compare("HeterogeneousChain")==0)
+                {
+                    mesh_string = "projects/OpenVT/src/Test02MonolayerGrowth/1D_11_plus_10_nodes";
+                }
+                else
+                {
+                    NEVER_REACHED;
+                }
+
+                TrianglesMeshReader<1,1> mesh_reader_1d(mesh_string);
+                MutableMesh<1,1> mesh;
+                mesh.ConstructFromMeshReader(mesh_reader_1d);
+                //mesh.Scale(compression);
+
+                // Create cells
+                std::vector<CellPtr> cells;
+                MAKE_PTR(DifferentiatedCellProliferativeType, p_differentiated_type);
+                CellsGenerator<FixedDurationCellCycleModel, 1> cells_generator;
+                cells_generator.GenerateBasicRandom(cells, mesh.GetNumNodes(), p_differentiated_type);
+
+                MeshBasedCellPopulation<1> cell_population(mesh, cells);
+                cell_population.AddCellWriter<CellCentreLocationWriter>();
+
+                OffLatticeSimulation<1> simulator(cell_population);
+                simulator.SetOutputDirectory(output_dir);
+                simulator.SetDt(dt);
+                simulator.SetSamplingTimestepMultiple(output_timesteps);
+                simulator.SetEndTime(end_time);
+
+                // Create a force law and pass it to the simulation+
+                if(force_type.compare("Linear")==0)
+                {
+                    MAKE_PTR(GeneralisedLinearSpringForce<1>, p_linear_force);
+                    p_linear_force->SetMeinekeSpringStiffness(linear_spring_stiffness);
+                    p_linear_force->SetCutOffLength(1.5);
+                    simulator.AddForce(p_linear_force);
+                }
+                else if(force_type.compare("Quadratic")==0)
+                {
+                    MAKE_PTR(QuadraticRepulsionForce<1>, p_quadratic_force);
+                    p_quadratic_force->SetRepulsionMagnitude(quadratic_spring_stiffness);
+                    p_quadratic_force->SetCutOffLength(1.5);
+                    simulator.AddForce(p_quadratic_force);
+                }
+                else
+                {
+                    NEVER_REACHED;
+                }
+
+                
+                // // Create a boundary condition for the left end 
+                // c_vector<double,1> point = zero_vector<double>(1);
+                // c_vector<double,1> normal = zero_vector<double>(1);
+                // point(0) = 0.5;
+                // normal(0) = -1.0;
+                // MAKE_PTR_ARGS(PlaneBoundaryCondition<1>, p_bcs, (&cell_population, point, normal)); // y>0.5
+                // simulator.AddCellPopulationBoundaryCondition(p_bcs);
+            
+                simulator.Solve();
+
+                // Reset for next simulation
+                SimulationTime::Instance()->Destroy();
+                SimulationTime::Instance()->SetStartTime(0.0);
             }
-            else if(tissue_type.compare("HeterogeneousChain")==0)
-            {
-                mesh_string = "projects/OpenVT/src/Test02MonolayerGrowth/1D_11_plus_10_nodes";
-            }
-            else
-            {
-                NEVER_REACHED;
-            }
-
-            TrianglesMeshReader<1,1> mesh_reader_1d(mesh_string);
-            MutableMesh<1,1> mesh;
-            mesh.ConstructFromMeshReader(mesh_reader_1d);
-            //mesh.Scale(compression);
-
-            // Create cells
-            std::vector<CellPtr> cells;
-            MAKE_PTR(DifferentiatedCellProliferativeType, p_differentiated_type);
-            CellsGenerator<FixedDurationCellCycleModel, 1> cells_generator;
-            cells_generator.GenerateBasicRandom(cells, mesh.GetNumNodes(), p_differentiated_type);
-
-            MeshBasedCellPopulation<1> cell_population(mesh, cells);
-            cell_population.AddCellWriter<CellCentreLocationWriter>();
-
-            OffLatticeSimulation<1> simulator(cell_population);
-            simulator.SetOutputDirectory(output_dir);
-            simulator.SetDt(dt);
-            simulator.SetSamplingTimestepMultiple(output_timesteps);
-            simulator.SetEndTime(end_time);
-
-            // Create a force law and pass it to the simulation
-            MAKE_PTR(GeneralisedLinearSpringForce<1>, p_linear_force);
-            p_linear_force->SetMeinekeSpringStiffness(spring_stiffness);
-            p_linear_force->SetCutOffLength(1.5);
-            simulator.AddForce(p_linear_force);
-
-            // // Create a boundary condition for the left end 
-            // c_vector<double,1> point = zero_vector<double>(1);
-            // c_vector<double,1> normal = zero_vector<double>(1);
-            // point(0) = 0.5;
-            // normal(0) = -1.0;
-            // MAKE_PTR_ARGS(PlaneBoundaryCondition<1>, p_bcs, (&cell_population, point, normal)); // y>0.5
-            // simulator.AddCellPopulationBoundaryCondition(p_bcs);
-        
-            simulator.Solve();
-
-            // Reset for next simulation
-            SimulationTime::Instance()->Destroy();
-            SimulationTime::Instance()->SetStartTime(0.0);
         }
 
     }
@@ -186,11 +210,11 @@ public:
         unsigned num_runs = 10;
         
         double end_time = 5.0;//1.0;
-		double dt = 0.025; // EDITED TO MAKE HIT 9CD AT 1HR
-        unsigned output_timesteps = 4;
+		double dt = 1.0/72-.0; // EDITED TO MAKE HIT 9CD AT 1HR
+        unsigned output_timesteps = 10;
         
         double target_area = 50.0;
-        double target_area_parameter = 20.0;
+        double target_area_parameter = 5.0;
         
         double temperature = 20;
 

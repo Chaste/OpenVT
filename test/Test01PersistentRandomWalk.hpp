@@ -73,62 +73,8 @@ public:
      */
     void TestNodeBasedRandomWalk()
     {
-        EXIT_IF_PARALLEL; // Cant access cells with index loop on multiple processors.
+      // NO LONGER USED SEE PersistentRandomWalk PROJECT.  
 
-        std::string base_name = "OpenVT/Test01PersistentRandomWalk/";
-
-        unsigned num_cells = 10;
-        double end_time = 1;
-        double dt = 1.0/100.0;
-
-        std::string model_types[2] = {"Model001","Model003"};
-
-        for (unsigned model_type_index = 0; model_type_index != 1; model_type_index++)
-        {
-            std::string model_type = model_types[model_type_index];
-
-            std::string output_dir = base_name + model_type;
-        
-            PRINT_VARIABLE(output_dir);
-
-            // Create a simple mesh
-            std::vector<Node<2>*> nodes (num_cells);
-
-            for ( unsigned j = 0; j < num_cells; j++ )
-            {
-                    nodes[j] = new Node<2>(j, false, 0.0,0.0);
-            }
-
-            // Convert this to a NodesOnlyMesh
-            NodesOnlyMesh<2> mesh;
-            mesh.ConstructNodesWithoutMesh(nodes, 1.5);
-
-            // Create cells
-            std::vector<CellPtr> cells;
-            MAKE_PTR(DifferentiatedCellProliferativeType, p_differentiated_type);
-            CellsGenerator<FixedG1GenerationalCellCycleModel, 2> cells_generator;
-            cells_generator.GenerateBasicRandom(cells, mesh.GetNumNodes(), p_differentiated_type);
-
-            // Create a node-based cell population
-            NodeBasedCellPopulation<2> node_based_cell_population(mesh, cells);
-
-            // Set up cell-based simulation
-            OffLatticeSimulation<2> simulator(node_based_cell_population);
-            simulator.SetOutputDirectory(output_dir);
-            simulator.SetDt(dt);
-            simulator.SetEndTime(end_time);
-            simulator.SetUpdateCellPopulationRule(false);
-
-            // Create a Random force law (i.e diffusion) and pass it to the simulation
-            MAKE_PTR(RandomMotionForce<2>, p_diffusion_force);
-            simulator.AddForce(p_diffusion_force);
-
-            simulator.Solve();
-
-            // Reset for next simulation
-            SimulationTime::Instance()->Destroy();
-            SimulationTime::Instance()->SetStartTime(0.0);
-        }
     }
         
         
