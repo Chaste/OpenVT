@@ -10,4 +10,4 @@ The referece models implemtned are
 * Test05CellSorting
 * Test06Angiogenesis - not yet implemented
 
-To run the tests install the chaste libraries (or setup a Docker container) as in the [Chaste install guides](https://chaste.github.io/docs/installguides/) then checkout this project into the Chaste/projects folder to rin the required test.
+To run the tests install the chaste libraries (or setup a Docker container) as in the [Chaste install guides](https://chaste.github.io/docs/installguides/) then checkout this project into the Chaste/projects folder to run the required tests.
