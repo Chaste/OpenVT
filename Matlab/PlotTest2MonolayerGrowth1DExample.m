@@ -1,0 +1,179 @@
+        clear; close all;
+
+BaseType = '../../../testoutput/Test02MonlayerGrowthGrowth1d';
+
+Models = {'Mesh_Linear','Mesh_Quadratic'};
+ModelTitles = {'Mesh Linear','Mesh Quadratic'};
+
+TissueTypes = {'HomogeneousChain','HeterogeneousChain'};
+
+num_runs = 10;
+alpha_weight = 0.1;
+
+for ModelIndex = 1:length(Models)
+    Model = Models{ModelIndex};
+    ModelTitle = ModelTitles{ModelIndex};
+
+
+
+    for TissueTypeIndex = 1:length(TissueTypes)
+        TissueType = TissueTypes{TissueTypeIndex};
+
+        close all
+
+        local_num_runs = 1;
+
+        if strcmp(Model,'Potts')
+            local_num_runs = num_runs;
+        end
+
+        for run = 0:(local_num_runs-1)
+
+            simulation_name = [BaseType,'/',Model, '/', TissueType]
+
+            if strcmp(Model,'Potts')
+                simulation_name = [BaseType,'/',Model, '/Run', num2str(run) ,'/', TissueType]
+            end
+
+
+
+
+
+            positions_file = [simulation_name, '/results_from_time_0/cellcentrelocations.dat'];
+            positions_data = load(positions_file);
+
+            times = positions_data(:,1);
+
+
+            if strcmp(Model,'Potts')
+                midpoint = mean(positions_data(1,3:3:end-1))
+                all_xs = (positions_data(:,3:3:end-1)-midpoint)/10;
+                all_xs = sort(all_xs,2);
+            elseif strcmp(Model,'Mesh_Linear') || strcmp(Model,'Mesh_Quadratic')
+                all_xs = positions_data(:,3:2:end);
+            else
+                assert(0);
+            end
+
+
+            figure(1)
+            hold on
+
+            for cell=1:length(all_xs(1,:))
+                if abs(all_xs(1,cell))<2.51
+                    plot(times,all_xs(:,cell),'Color',[0,0,1,alpha_weight]);
+                else
+                    plot(times,all_xs(:,cell),'Color',[0,1,0,alpha_weight]);
+                end
+            end
+
+            figure (2)
+            hold on
+            plot(times,all_xs(:,end)-all_xs(:,1),'Color',[0,0,0,alpha_weight])
+
+            % Store Mean xs
+            if run == 0
+                mean_xs = all_xs
+            else
+                mean_xs = mean_xs + all_xs
+            end
+
+            %Export Data
+            data = [times, all_xs(:,end)-all_xs(:,1)];
+            filename = ['Data/Width',Model,TissueType,'Run_',num2str(run),'.csv'];
+            writematrix(data,filename);
+
+            if strcmp(TissueType,'HeterogeneousChain')
+                figure (3)
+                hold on
+                plot(times,all_xs(:,16)-all_xs(:,6),'Color',[0,0,0,alpha_weight])
+
+                %Export Data
+                data = [times, all_xs(:,16)-all_xs(:,6)];
+                filename = ['Data/InnerWidth',Model,TissueType,'Run_',num2str(run),'.csv'];
+                writematrix(data,filename);
+            end
+        end
+
+        mean_xs = mean_xs./local_num_runs;
+
+        figure(1)
+        for cell=1:length(all_xs(1,:))
+            if abs(all_xs(1,cell))<2.51
+                plot(times,mean_xs(:,cell),'Color',[0,0,1,1]);
+            else
+                plot(times,mean_xs(:,cell),'Color',[0,1,0,1]);
+            end
+        end
+
+
+
+
+
+        ylim([-6,6])
+        if length(all_xs(1,:)) > 12
+            ylim([-12,12])
+        end
+
+        title(ModelTitle)
+        xlabel("Time (hours)")
+        ylabel("Postion (CD)")
+        SaveAsPngEpsAndFig(-1,['Figs/Test02aMonolayerGrowth1dChain', TissueType, Model], 7, 7/5, 9);
+
+
+        figure (2)
+        plot(times,mean_xs(:,end)-mean_xs(:,1),'Color',[0,0,0,1])
+        plot(times,9*ones(size(times)),'k:')
+        plot(times,10*ones(size(times)),'k:')
+        plot([1,1],[0,20.5],'k:')
+
+
+        ylim([4.5,10.5])
+        if length(all_xs(1,:)) > 11
+            ylim([14.0,20.0])
+        end
+
+
+        title(ModelTitle)
+        xlabel("Time (hours)")
+        ylabel("Tissue Width (CD)")
+        SaveAsPngEpsAndFig(-1,['Figs/Test02aMonolayerGrowth1dChain', TissueType, Model, 'Width'], 7, 7/5, 9);
+
+        if strcmp(TissueType,'HeterogeneousChain')
+
+            figure (3)
+            plot(times,mean_xs(:,16)-mean_xs(:,6),'Color',[0,0,0,1])
+            plot(times,9*ones(size(times)),'k:')
+            plot(times,10*ones(size(times)),'k:')
+            plot([1,1],[0,20.5],'k:')
+
+            ylim([4.5,10.5])
+            title(ModelTitle)
+            xlabel("Time (hours)")
+            ylabel("Tissue Width (CD)")
+            SaveAsPngEpsAndFig(-1,['Figs/Test02aMonolayerGrowth1dChain', TissueType, Model, 'InnerWidth'], 7, 7/5, 9);
+
+        end
+
+
+
+        %Export Data
+        data = [times, mean_xs(:,end)-mean_xs(:,1)];
+        filename = ['Data/Width',Model,TissueType,'Mean','.csv'];
+        writematrix(data,filename);
+
+        if strcmp(TissueType,'HeterogeneousChain')
+            %Export Data
+            data = [times, mean_xs(:,16)-mean_xs(:,6)];
+            filename = ['Data/InnerWidth',Model,TissueType,'Mean','.csv'];
+            writematrix(data,filename);
+        end
+
+    end
+
+end
+
+
+
+
+
