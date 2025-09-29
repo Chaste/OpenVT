@@ -2,8 +2,8 @@
 
 BaseType = '../../../testoutput/Test02MonlayerGrowthGrowth1d';
 
-Models = {'Mesh_Linear','Mesh_Quadratic'};
-ModelTitles = {'Mesh Linear','Mesh Quadratic'};
+Models = {'Potts','Mesh_Linear','Mesh_Quadratic', 'Vertex'};
+ModelTitles = {'Potts','Mesh Linear','Mesh Quadratic', 'Vertex'};
 
 TissueTypes = {'HomogeneousChain','HeterogeneousChain'};
 
@@ -35,10 +35,6 @@ for ModelIndex = 1:length(Models)
                 simulation_name = [BaseType,'/',Model, '/Run', num2str(run) ,'/', TissueType]
             end
 
-
-
-
-
             positions_file = [simulation_name, '/results_from_time_0/cellcentrelocations.dat'];
             positions_data = load(positions_file);
 
@@ -46,11 +42,14 @@ for ModelIndex = 1:length(Models)
 
 
             if strcmp(Model,'Potts')
-                midpoint = mean(positions_data(1,3:3:end-1))
+                midpoint = mean(positions_data(1,3:3:end-1));
                 all_xs = (positions_data(:,3:3:end-1)-midpoint)/10;
                 all_xs = sort(all_xs,2);
             elseif strcmp(Model,'Mesh_Linear') || strcmp(Model,'Mesh_Quadratic')
                 all_xs = positions_data(:,3:2:end);
+            elseif strcmp(Model,'Vertex')
+                midpoint = mean(positions_data(1,3:3:end));
+                all_xs = positions_data(:,3:3:end)-midpoint;
             else
                 assert(0);
             end
