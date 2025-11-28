@@ -72,7 +72,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "VertexBasedCellPopulation.hpp"
 #include "HoneycombVertexMeshGenerator.hpp"
-#include "NagaiHondaForce.hpp"
+#include "SimplifiedNagaiHondaForce.hpp"
 #include "SimpleTargetAreaModifier.hpp"
 #include "GrowthInhibitionModifier.hpp"
 
@@ -101,9 +101,9 @@ private:
     
 public:
 
-    void Test1dNodeChainCompression()
+    void noTest1dNodeChainCompression()
     {
-        double end_time = 5.0;
+        double end_time = 10.0;
         double dt = 0.001;
         unsigned output_timesteps = 10;
 		double linear_spring_stiffness = 50.0/3.0;
@@ -204,13 +204,13 @@ public:
 
 
 
-    void noTest1dPottsChainCompression()
+    void Test2dPottsChainCompression()
     {
         unsigned start_index = 0;
         unsigned num_runs = 10;
         
-        double end_time = 5.0;//1.0;
-		double dt = 1.0/72-.0; // EDITED TO MAKE HIT 9CD AT 1HR
+        double end_time = 10.0;//1.0;
+		double dt = 1.0/72.0; // EDITED TO MAKE HIT 9CD AT 1HR
         unsigned output_timesteps = 10;
         
         double target_area = 50.0;
@@ -326,6 +326,84 @@ public:
 
     }
 
+    void noTest2dVertexChainCompression()
+    {
+        double end_time = 10.0;//1.0;
+		double dt = 0.0001;
+        unsigned output_timesteps = 100;
+        
+        double timescale = 20.5;
+        
+        //double target_area = 50.0;
+        //double target_area_parameter = 5.0;
+        
+        //double compression = 0.5;
+        //unsigned num_cells = 21;
+        //unsigned num_edge_cells = 5;
+       
+        std::string base_type = "Test02MonlayerGrowthGrowth1d/Vertex";
+
+        std::string tissue_types[2] = {"HomogeneousChain","HeterogeneousChain"};
+        
+        for (unsigned tissue_type_index = 0; tissue_type_index != 2; tissue_type_index++)
+        {
+            std::string tissue_type = tissue_types[tissue_type_index];
+
+            std::string output_dir = base_type + "/" + tissue_type;
+
+            std::string mesh_string;
+
+            if(tissue_type.compare("HomogeneousChain")==0)
+            {
+                mesh_string = "projects/OpenVT/src/Test02MonolayerGrowth/homogeneous_chain";
+            }
+            else if(tissue_type.compare("HeterogeneousChain")==0)
+            {
+                mesh_string = "projects/OpenVT/src/Test02MonolayerGrowth/heterogeneous_chain";
+            }
+            else
+            {
+                NEVER_REACHED;
+            }
+
+            MutableVertexMesh<2,2> mesh;
+            VertexMeshReader<2,2> mesh_reader(mesh_string);
+            mesh.ConstructFromMeshReader(mesh_reader);
+            
+            // Create cells
+            std::vector<CellPtr> cells;
+            MAKE_PTR(DifferentiatedCellProliferativeType, p_differentiated_type);
+            CellsGenerator<FixedDurationCellCycleModel, 2> cells_generator;
+            cells_generator.GenerateBasicRandom(cells, mesh.GetNumElements(), p_differentiated_type);
+
+            VertexBasedCellPopulation<2> cell_population(mesh, cells);
+            cell_population.AddCellWriter<CellCentreLocationWriter>();
+
+            OffLatticeSimulation<2> simulator(cell_population);
+            simulator.SetOutputDirectory(output_dir);
+            simulator.SetEndTime(end_time);
+            simulator.SetDt(dt);
+            simulator.SetSamplingTimestepMultiple(output_timesteps);
+
+            MAKE_PTR(SimplifiedNagaiHondaForce<2>, p_force);
+            p_force->SetNagaiHondaDeformationEnergyParameter(timescale*100.0); //100.0
+            p_force->SetNagaiHondaMembraneSurfaceEnergyParameter(timescale*10.0); // 10.0
+            p_force->SetNagaiHondaTargetAreaParameter(0.5*sqrt(3.0)); 
+            p_force->SetNagaiHondaTargetPerimeterParameter(2.0*sqrt(3.0)); 
+
+            // So no difference between cells cell and cell boundary
+            p_force->SetNagaiHondaCellCellAdhesionEnergyParameter(0.0);
+            p_force->SetNagaiHondaCellBoundaryAdhesionEnergyParameter(0.0);
+            
+
+            simulator.AddForce(p_force);
+            
+            simulator.Solve();
+
+                
+        }
+
+    }
 
 };
 
