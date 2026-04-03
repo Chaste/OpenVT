@@ -50,11 +50,11 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "CellAgesWriter.hpp"
 #include "VoronoiDataWriter.hpp"
 #include "CellMutationStatesWriter.hpp"
+#include "NodeLocationWriter.hpp"
 
 #include "ParabolicGrowingDomainPdeModifier.hpp"
 #include "VolumeTrackingModifier.hpp"
 
-#include "FixedDurationCellCycleModelWithGrowthInhibition.hpp"
 #include "CellDataItemWriter.hpp"
 #include "CellVolumesWriter.hpp"
 #include "TissueWidthWriter.hpp"
@@ -65,7 +65,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "MeshBasedCellPopulationWithGhostNodes.hpp"
 #include "HoneycombMeshGenerator.hpp"
-#include "GeneralisedLinearSpringForceWithMinDistanceItem.hpp"
+#include "GeneralisedLinearSpringForce.hpp"
 
 #include "NodeBasedCellPopulation.hpp"
 #include "RepulsionForce.hpp"
@@ -74,6 +74,9 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "HoneycombVertexMeshGenerator.hpp"
 #include "NagaiHondaForce.hpp"
 #include "SimpleTargetAreaModifier.hpp"
+
+#include "FixedDurationCellCycleModelWithGrowthInhibition.hpp"
+#include "FixedDurationCellCycleModelWithContactInhibition.hpp"
 #include "GrowthInhibitionModifier.hpp"
 
 #include "PottsBasedCellPopulation.hpp"
@@ -86,8 +89,23 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "DiffusionCaUpdateRule.hpp"
 
 #include "RandomNumberGenerator.hpp"
+#include "OffLatticeSimulationWithPopulationBasedStoppingEvent.hpp"
+#include "ForwardEulerNumericalMethod.hpp"
 
 #include "PetscSetupAndFinalize.hpp"
+// #include "CellContactInhibitionWriter.hpp"
+#include "Debug.hpp"
+
+#include "RandomMotionForce.hpp"
+
+
+#include "FixedGrowthModelWithContactInhibition.hpp"
+#include "ContactInhibitionModifier.hpp"
+#include "GeneralisedLinearSpringForceWithMinDistanceItem.hpp"
+
+// #include "FixedGrowthModelWithContactInhibition_mod.hpp"
+// #include "ContactInhibitionModifier_mod.hpp"
+// #include "GeneralisedLinearSpringForceWithMinDistanceItem_mod.hpp"
 
 
 class Test02aMonlayerGrowth : public AbstractCellBasedWithTimingsTestSuite
@@ -97,35 +115,53 @@ private:
     /*
      * This is a helper method to generate cells and is used in all simulations.
      */ 
-    void GenerateCells(unsigned num_cells, std::vector<CellPtr>& rCells, bool randomiseBirthTime)
+    void GenerateCells(unsigned num_cells, std::vector<CellPtr>& rCells, bool randomiseBirthTime, double p_beta, double p_gamma)
     {
         MAKE_PTR(WildTypeCellMutationState, p_state);
         MAKE_PTR(TransitCellProliferativeType, p_transit_type);
+        MAKE_PTR(StemCellProliferativeType, p_stem_type);
 
         for (unsigned i=0; i<num_cells; i++)
         {
             //UniformlyDistributedCellCycleModel* p_cycle_model = new UniformlyDistributedCellCycleModel();
-            FixedDurationCellCycleModelWithGrowthInhibition* p_cycle_model = new FixedDurationCellCycleModelWithGrowthInhibition();
+            // FixedDurationCellCycleModelWithGrowthInhibition* p_cycle_model = new FixedDurationCellCycleModelWithGrowthInhibition();
+            
+            // FixedGrowthModelWithContactInhibition_mod* p_cycle_model = new FixedGrowthModelWithContactInhibition_mod();
+            FixedGrowthModelWithContactInhibition* p_cycle_model = new FixedGrowthModelWithContactInhibition();
             p_cycle_model->SetDimension(2);
 
             CellPtr p_cell(new Cell(p_state, p_cycle_model));
-            p_cell->SetCellProliferativeType(p_transit_type);
+            p_cell->SetCellProliferativeType(p_stem_type);
+      
 
-            double birth_time = 0.0;
+            double birth_time = -9.5;
             if (randomiseBirthTime) {
-                birth_time = -RandomNumberGenerator::Instance()->ranf() * 18.0;
+                // birth_time = -RandomNumberGenerator::Instance()->ranf() * 18.0;
+                birth_time = -RandomNumberGenerator::Instance()->ranf() * 10.0;
             }
             p_cell->SetBirthTime(birth_time);
-            p_cycle_model->SetPhaseTimer(birth_time);
-
+            // p_cycle_model->SetPhaseTimer(birth_time);
+            // p_cycle_model->SetFreeAreaFraction(p_beta);
+            // p_cycle_model->SetFreeSurfaceFraction(p_gamma);
 
             p_cell->InitialiseCellCycleModel();
 
             // Set Target Area so dont need to use a growth model in vertex simulations
-            p_cell->GetCellData()->SetItem("target area", 1.0);
+            p_cell->GetCellData()->SetItem("target area", 2.0);
+            // p_cell->GetCellData()->SetItem("growth rate", 0.2); //0.1
+            p_cell->GetCellData()->SetItem("growth rate", (1.0 * 0.2)); //0.9116
+
+            p_cell->GetCellData()->SetItem("birth age", 10.0);
+
             p_cell->GetCellData()->SetItem("growth inhibited", 0.0);
-            p_cell->GetCellData()->SetItem("Radius", 0.1);
+            p_cell->GetCellData()->SetItem("Radius", 0.5);
+            p_cell->GetCellData()->SetItem("Deformable Radius", 0.5);
+            // p_cell->GetCellData()->SetItem("Initial_Radius", 0.35);
             p_cell->GetCellData()->SetItem("cell age", birth_time);
+            p_cell->GetCellData()->SetItem("FreeSurfaceFraction", 1.0);
+            p_cell->GetCellData()->SetItem("FreeAreaFraction", 1.0);
+            p_cell->GetCellData()->SetItem("p_beta", p_beta);
+            p_cell->GetCellData()->SetItem("p_gamma", p_gamma);
             rCells.push_back(p_cell);
         }
      }
@@ -135,46 +171,320 @@ public:
     /*
      * Simulate growth of a tissue monolayer without diffusion. Starts with a single cell
      */
-    void Test2DMonolayerWithoutDiffusionSingleCell()
+    void xTest2DMonolayerWithoutDiffusionSingleCell()
     {
-        static const double end_time = 22; //28*24; // 28 days first 14 days and second 14 days can be separated 
+
+        double spring_stiffness = 0.0;
+        // create a string identifier to take the string values of either linear, quadratic or log force law
+        // std::string force_law = "quadratic"; // "log"; // "quadratic"; // "linear";
+        TS_ASSERT(CommandLineArguments::Instance()->OptionExists("-p_force_law"));
+        std::string force_law = CommandLineArguments::Instance()->GetStringCorrespondingToOption("-p_force_law");
+        if (force_law == "linear")
+        {
+            spring_stiffness = 18.2816648;
+        }
+        else if (force_law == "quadratic")
+        {
+            // spring_stiffness = 88.54;
+            spring_stiffness = 155.0;
+        }
+        else if (force_law == "log")
+        {
+            spring_stiffness = 15.6556;
+        }
+        PRINT_VARIABLE(force_law);
+        PRINT_VARIABLE(spring_stiffness);
+
+        // reset the random number generator
+        double random_seed;
+        try
+        {
+          TS_ASSERT(CommandLineArguments::Instance()->OptionExists("-random_seed"));
+          random_seed = CommandLineArguments::Instance()->GetDoubleCorrespondingToOption("-random_seed");
+        }
+        catch(const std::exception& e)
+        {
+          random_seed = 0.0;
+        }
+        RandomNumberGenerator::Instance()->Reseed(random_seed);
+
+        TS_ASSERT(CommandLineArguments::Instance()->OptionExists("-p_beta"));
+        double p_beta = CommandLineArguments::Instance()->GetDoubleCorrespondingToOption("-p_beta");
+
+        TS_ASSERT(CommandLineArguments::Instance()->OptionExists("-p_gamma"));
+        double p_gamma = CommandLineArguments::Instance()->GetDoubleCorrespondingToOption("-p_gamma");
+
+        TS_ASSERT(CommandLineArguments::Instance()->OptionExists("-end_time"));
+        double end_time = CommandLineArguments::Instance()->GetDoubleCorrespondingToOption("-end_time");
+
+        TS_ASSERT(CommandLineArguments::Instance()->OptionExists("-sample_rate"));
+        double sample_rate = CommandLineArguments::Instance()->GetDoubleCorrespondingToOption("-sample_rate");
+
+        TS_ASSERT(CommandLineArguments::Instance()->OptionExists("-output_name"));
+        std::string output_name = CommandLineArguments::Instance()->GetStringCorrespondingToOption("-output_name");
+
+        TS_ASSERT(CommandLineArguments::Instance()->OptionExists("-cut_off_length"));
+        double cut_off_length = CommandLineArguments::Instance()->GetDoubleCorrespondingToOption("-cut_off_length");
+
+
+        // static const double end_time = 200; //28*24; // 28 days first 14 days and second 14 days can be separated 
 
 
         NodesOnlyMesh<2>* p_mesh = new NodesOnlyMesh<2>;
-        std::vector<double> center = {0.0, 0.0};
-        double cut_off_length = 1.5; //this is the default
-        Node<2> node(0, center.data(), false);
-        p_mesh->AddNode(&node);
-        p_mesh->SetMaximumInteractionDistance(cut_off_length);
+        
+        std::vector<double> cell_1 = {0.0, 0.0};
+        Node<2> node1(0, cell_1.data(), false);
+        p_mesh->AddNode(&node1);
+
+        // std::vector<double> cell_2 = {0.5, 0.0};
+        // Node<2> node2(1, cell_2.data(), false);
+        // p_mesh->AddNode(&node2);
+
+        // std::vector<double> cell_3 = {0.0, 0.5};
+        // Node<2> node3(2, cell_3.data(), false);
+        // p_mesh->AddNode(&node3);
+      
+        // std::vector<double> cell_4 = {-0.5, 0.0};
+        // Node<2> node4(3, cell_4.data(), false);
+        // p_mesh->AddNode(&node4);
+
+        // std::vector<double> cell_5 = {0.0, -0.5};
+        // Node<2> node5(4, cell_5.data(), false);
+        // p_mesh->AddNode(&node5);
+
+        p_mesh->SetMaximumInteractionDistance(1.1*cut_off_length);
 
         std::vector<CellPtr> cells;
-        GenerateCells(p_mesh->GetNumNodes(),cells,false);
+        GenerateCells(p_mesh->GetNumNodes(),cells, false, p_beta, p_gamma);
+
+        double division_separation = 2.0*(std::sqrt(1.0/M_PI));
 
         NodeBasedCellPopulation<2> cell_population(*p_mesh, cells);
         cell_population.AddCellWriter<CellIdWriter>();
         cell_population.AddCellWriter<CellAgesWriter>();
         cell_population.AddCellWriter<CellMutationStatesWriter>();
         cell_population.AddCellWriter<CellVolumesWriter>();
+        // cell_population.AddCellWriter<CellContactInhibitionWriter>();
         cell_population.AddPopulationWriter<TissueWidthWriter>();
+        cell_population.SetMeinekeDivisionSeparation(division_separation);
         cell_population.SetUseVariableRadii(true);
 
-        OffLatticeSimulation<2> simulator(cell_population);
-        simulator.SetOutputDirectory("Test02aMonlayerGrowth");
-        simulator.SetDt(0.02);
-        simulator.SetSamplingTimestepMultiple(200); // Every 4 hours
+        OffLatticeSimulationWithPopulationBasedStoppingEvent simulator(cell_population);
+        simulator.SetOutputDirectory(output_name);
+        simulator.SetDt(0.002);
+        simulator.SetSamplingTimestepMultiple(sample_rate); // Every 4 hours
         simulator.SetEndTime(end_time);
+
+        // Pass an adaptive numerical method to the simulation
+        boost::shared_ptr<AbstractNumericalMethod<2,2> > p_method(new ForwardEulerNumericalMethod<2,2>());
+        p_method->SetUseAdaptiveTimestep(true);
+        simulator.SetNumericalMethod(p_method);
 
         simulator.SetOutputDivisionLocations(true);
 
         // Create a force law and pass it to the simulation
-        MAKE_PTR(GeneralisedLinearSpringForceWithMinDistanceItem<2>, p_linear_force);
-        p_linear_force->SetMeinekeSpringStiffness(10); //2.7
-        p_linear_force->SetCutOffLength(cut_off_length);
-        simulator.AddForce(p_linear_force);
-        
-        MAKE_PTR(GrowthInhibitionModifier<2>, p_growth_inhibition_modifier);
-        simulator.AddSimulationModifier(p_growth_inhibition_modifier);
+        MAKE_PTR(GeneralisedLinearSpringForceWithMinDistanceItem<2>, p_force);
+        // MAKE_PTR(GeneralisedLinearSpringForceWithMinDistanceItem_mod<2>, p_force);
+        // p_force->SetMeinekeSpringStiffness(30); //2.7 //15
+        p_force->SetForceLawType(force_law);
+        p_force->SetMeinekeSpringStiffness(spring_stiffness); //2.7 //15
+        p_force->SetMeinekeDivisionRestingSpringLength(division_separation); //2.7
+        p_force->SetMeinekeSpringGrowthDuration(2); //2.7
+        p_force->SetCutOffLength(cut_off_length);
+     
+        simulator.AddForce(p_force);
 
+        // MAKE_PTR(RandomMotionForce<2>, p_random_motion_force);
+        // p_random_motion_force->SetMovementParameter(0.001);
+        // simulator.AddForce(p_random_motion_force);
+
+
+        // MAKE_PTR(ContactInhibitionModifier_mod<2>, p_contact_inhibition_modifier);
+        MAKE_PTR(ContactInhibitionModifier<2>, p_contact_inhibition_modifier);
+        simulator.AddSimulationModifier(p_contact_inhibition_modifier);
+
+        // output the cell data
+        // cell_population.AddCellWriter<CellDataItemWriter>();
+        cell_population.AddPopulationWriter<NodeLocationWriter>();
+        // cell_population.AddCellWriter<CellContactInhibitionWriter>();
+
+        boost::shared_ptr<CellDataItemWriter<2,2> > p1_writer(new CellDataItemWriter<2,2>("FreeAreaFraction"));
+        cell_population.AddCellWriter(p1_writer);
+
+        boost::shared_ptr<CellDataItemWriter<2,2> > p2_writer(new CellDataItemWriter<2,2>("FreeSurfaceFraction"));
+        cell_population.AddCellWriter(p2_writer);
+
+        boost::shared_ptr<CellDataItemWriter<2,2> > p3_writer(new CellDataItemWriter<2,2>("growth inhibited"));
+        cell_population.AddCellWriter(p3_writer);
+
+        boost::shared_ptr<CellDataItemWriter<2,2> > p4_writer(new CellDataItemWriter<2,2>("Radius"));
+        cell_population.AddCellWriter(p4_writer);
+
+        boost::shared_ptr<CellDataItemWriter<2,2> > p5_writer(new CellDataItemWriter<2,2>("target area"));
+        cell_population.AddCellWriter(p5_writer);
+
+        boost::shared_ptr<CellDataItemWriter<2,2> > p6_writer(new CellDataItemWriter<2,2>("birth age"));
+        cell_population.AddCellWriter(p6_writer);
+
+        boost::shared_ptr<CellDataItemWriter<2,2> > p7_writer(new CellDataItemWriter<2,2>("Deformable Radius"));
+        cell_population.AddCellWriter(p7_writer);
+
+        simulator.Solve();
+
+    }
+
+    void Test2DMonolayerWithoutDiffusionSingleCell()
+    {
+
+        double spring_stiffness = 0.0;
+        // create a string identifier to take the string values of either linear, quadratic or log force law
+        // std::string force_law = "quadratic"; // "log"; // "quadratic"; // "linear";
+        TS_ASSERT(CommandLineArguments::Instance()->OptionExists("-p_force_law"));
+        std::string force_law = CommandLineArguments::Instance()->GetStringCorrespondingToOption("-p_force_law");
+        if (force_law == "linear")
+        {
+            spring_stiffness = 18.2816648;
+        }
+        else if (force_law == "quadratic")
+        {
+            // spring_stiffness = 88.54;
+            spring_stiffness = 155.0;
+        }
+        else if (force_law == "log")
+        {
+            spring_stiffness = 15.6556;
+        }
+        PRINT_VARIABLE(force_law);
+        PRINT_VARIABLE(spring_stiffness);
+
+        // reset the random number generator
+        double random_seed;
+        try
+        {
+          TS_ASSERT(CommandLineArguments::Instance()->OptionExists("-random_seed"));
+          random_seed = CommandLineArguments::Instance()->GetDoubleCorrespondingToOption("-random_seed");
+        }
+        catch(const std::exception& e)
+        {
+          random_seed = 0.0;
+        }
+        RandomNumberGenerator::Instance()->Reseed(random_seed);
+
+        TS_ASSERT(CommandLineArguments::Instance()->OptionExists("-p_beta"));
+        double p_beta = CommandLineArguments::Instance()->GetDoubleCorrespondingToOption("-p_beta");
+
+        TS_ASSERT(CommandLineArguments::Instance()->OptionExists("-p_gamma"));
+        double p_gamma = CommandLineArguments::Instance()->GetDoubleCorrespondingToOption("-p_gamma");
+
+        TS_ASSERT(CommandLineArguments::Instance()->OptionExists("-end_time"));
+        double end_time = CommandLineArguments::Instance()->GetDoubleCorrespondingToOption("-end_time");
+
+        TS_ASSERT(CommandLineArguments::Instance()->OptionExists("-sample_rate"));
+        double sample_rate = CommandLineArguments::Instance()->GetDoubleCorrespondingToOption("-sample_rate");
+
+        TS_ASSERT(CommandLineArguments::Instance()->OptionExists("-output_name"));
+        std::string output_name = CommandLineArguments::Instance()->GetStringCorrespondingToOption("-output_name");
+
+        TS_ASSERT(CommandLineArguments::Instance()->OptionExists("-cut_off_length"));
+        double cut_off_length = CommandLineArguments::Instance()->GetDoubleCorrespondingToOption("-cut_off_length");
+
+
+        // static const double end_time = 200; //28*24; // 28 days first 14 days and second 14 days can be separated 
+
+
+        NodesOnlyMesh<2>* p_mesh = new NodesOnlyMesh<2>;
+        
+        std::vector<double> cell_1 = {0.0, 0.0};
+        Node<2> node1(0, cell_1.data(), false);
+        p_mesh->AddNode(&node1);
+
+        // std::vector<double> cell_2 = {0.5, 0.0};
+        // Node<2> node2(1, cell_2.data(), false);
+        // p_mesh->AddNode(&node2);
+
+        // std::vector<double> cell_3 = {0.0, 0.5};
+        // Node<2> node3(2, cell_3.data(), false);
+        // p_mesh->AddNode(&node3);
+      
+        // std::vector<double> cell_4 = {-0.5, 0.0};
+        // Node<2> node4(3, cell_4.data(), false);
+        // p_mesh->AddNode(&node4);
+
+        // std::vector<double> cell_5 = {0.0, -0.5};
+        // Node<2> node5(4, cell_5.data(), false);
+        // p_mesh->AddNode(&node5);
+
+        p_mesh->SetMaximumInteractionDistance(1.1*cut_off_length);
+
+        std::vector<CellPtr> cells;
+        GenerateCells(p_mesh->GetNumNodes(),cells, false, p_beta, p_gamma);
+
+        double division_separation = 2.0*(std::sqrt(1.0/M_PI));
+
+        VertexBasedCellPopulation<2> cell_population(*p_mesh, cells);
+        cell_population.AddCellWriter<CellIdWriter>();
+        cell_population.AddCellWriter<CellAgesWriter>();
+        cell_population.AddCellWriter<CellMutationStatesWriter>();
+        cell_population.AddCellWriter<CellVolumesWriter>();
+        // cell_population.AddCellWriter<CellContactInhibitionWriter>();
+        cell_population.AddPopulationWriter<TissueWidthWriter>();
+        cell_population.SetMeinekeDivisionSeparation(division_separation);
+        cell_population.SetUseVariableRadii(true);
+
+        OffLatticeSimulationWithPopulationBasedStoppingEvent simulator(cell_population);
+        simulator.SetOutputDirectory(output_name);
+        simulator.SetDt(0.002);
+        simulator.SetSamplingTimestepMultiple(sample_rate); // Every 4 hours
+        simulator.SetEndTime(end_time);
+
+        // Pass an adaptive numerical method to the simulation
+        boost::shared_ptr<AbstractNumericalMethod<2,2> > p_method(new ForwardEulerNumericalMethod<2,2>());
+        p_method->SetUseAdaptiveTimestep(true);
+        simulator.SetNumericalMethod(p_method);
+
+        simulator.SetOutputDivisionLocations(true);
+
+        // Create a force law and pass it to the simulation
+        MAKE_PTR(GeneralisedLinearSpringForceWithMinDistanceItem<2>, p_force);
+        // MAKE_PTR(GeneralisedLinearSpringForceWithMinDistanceItem_mod<2>, p_force);
+        // p_force->SetMeinekeSpringStiffness(30); //2.7 //15
+        p_force->SetForceLawType(force_law);
+        p_force->SetMeinekeSpringStiffness(spring_stiffness); //2.7 //15
+        p_force->SetMeinekeDivisionRestingSpringLength(division_separation); //2.7
+        p_force->SetMeinekeSpringGrowthDuration(2); //2.7
+        p_force->SetCutOffLength(cut_off_length);
+     
+        simulator.AddForce(p_force);
+
+        // MAKE_PTR(ContactInhibitionModifier_mod<2>, p_contact_inhibition_modifier);
+        MAKE_PTR(ContactInhibitionModifier<2>, p_contact_inhibition_modifier);
+        simulator.AddSimulationModifier(p_contact_inhibition_modifier);
+
+        // output the cell data
+        // cell_population.AddCellWriter<CellDataItemWriter>();
+        cell_population.AddPopulationWriter<NodeLocationWriter>();
+        // cell_population.AddCellWriter<CellContactInhibitionWriter>();
+
+        boost::shared_ptr<CellDataItemWriter<2,2> > p1_writer(new CellDataItemWriter<2,2>("FreeAreaFraction"));
+        cell_population.AddCellWriter(p1_writer);
+
+        boost::shared_ptr<CellDataItemWriter<2,2> > p2_writer(new CellDataItemWriter<2,2>("FreeSurfaceFraction"));
+        cell_population.AddCellWriter(p2_writer);
+
+        boost::shared_ptr<CellDataItemWriter<2,2> > p3_writer(new CellDataItemWriter<2,2>("growth inhibited"));
+        cell_population.AddCellWriter(p3_writer);
+
+        boost::shared_ptr<CellDataItemWriter<2,2> > p4_writer(new CellDataItemWriter<2,2>("Radius"));
+        cell_population.AddCellWriter(p4_writer);
+
+        boost::shared_ptr<CellDataItemWriter<2,2> > p5_writer(new CellDataItemWriter<2,2>("target area"));
+        cell_population.AddCellWriter(p5_writer);
+
+        boost::shared_ptr<CellDataItemWriter<2,2> > p6_writer(new CellDataItemWriter<2,2>("birth age"));
+        cell_population.AddCellWriter(p6_writer);
+
+        boost::shared_ptr<CellDataItemWriter<2,2> > p7_writer(new CellDataItemWriter<2,2>("Deformable Radius"));
+        cell_population.AddCellWriter(p7_writer);
 
         simulator.Solve();
 
@@ -183,3 +493,6 @@ public:
 };
 
 #endif /* TEST02MONOLAYERGROWTH_HPP_ */
+
+
+

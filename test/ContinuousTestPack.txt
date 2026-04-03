@@ -1,6 +1,7 @@
 Investigation/TestCentreBasedCellSorting.hpp
 Test01PersistentRandomWalk.hpp
 Test02MonolayerGrowth.hpp
+Test02MonolayerGrowth_VT.hpp
 Test02MonolayerGrowth1dExamples.hpp
 Test02MonolayerGrowthFromCBC.hpp
 Test03WoundHealing.hpp

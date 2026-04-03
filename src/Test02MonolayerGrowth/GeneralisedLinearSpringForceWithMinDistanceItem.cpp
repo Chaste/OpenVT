@@ -38,13 +38,21 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "AbstractCentreBasedCellPopulation.hpp"
 #include "MeshBasedCellPopulation.hpp"
 #include "NodeBasedCellPopulation.hpp"
+#include "Debug.hpp"
+#include "AbstractCellCycleModel.hpp"
+#include <cmath>
+
+#include "FixedDurationCellCycleModelWithContactInhibition.hpp"
+#include "FixedGrowthModelWithContactInhibition.hpp"
+
 
 template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
 GeneralisedLinearSpringForceWithMinDistanceItem<ELEMENT_DIM,SPACE_DIM>::GeneralisedLinearSpringForceWithMinDistanceItem()
    : AbstractTwoBodyInteractionForce<ELEMENT_DIM,SPACE_DIM>(),
      mMeinekeSpringStiffness(5.0),        // denoted by mu in Meineke et al, 2001 (doi:10.1046/j.0960-7722.2001.00216.x)
-     mMeinekeDivisionRestingSpringLength(0.5),
-     mMeinekeSpringGrowthDuration(1.0)
+     mMeinekeDivisionRestingSpringLength(0.1),
+     mMeinekeSpringGrowthDuration(1.0),
+     mForceLawType("linear")
 {
     if (SPACE_DIM == 1)
     {
@@ -71,6 +79,211 @@ c_vector<double, SPACE_DIM> GeneralisedLinearSpringForceWithMinDistanceItem<ELEM
                                                                                     unsigned nodeBGlobalIndex,
                                                                                     AbstractCellPopulation<ELEMENT_DIM,SPACE_DIM>& rCellPopulation)
 {
+    // // We should only ever calculate the force between two distinct nodes
+    // assert(nodeAGlobalIndex != nodeBGlobalIndex);
+
+    // Node<SPACE_DIM>* p_node_a = rCellPopulation.GetNode(nodeAGlobalIndex);
+    // Node<SPACE_DIM>* p_node_b = rCellPopulation.GetNode(nodeBGlobalIndex);
+
+    // // Get the node locations
+    // const c_vector<double, SPACE_DIM>& r_node_a_location = p_node_a->rGetLocation();
+    // const c_vector<double, SPACE_DIM>& r_node_b_location = p_node_b->rGetLocation();
+
+    // // Get the node radii for a NodeBasedCellPopulation
+    // double node_a_radius = 0.0;
+    // double node_b_radius = 0.0;
+
+    // // Update actual cell radius
+    // CellPtr p_cell_A = rCellPopulation.GetCellUsingLocationIndex(nodeAGlobalIndex);
+    // CellPtr p_cell_B = rCellPopulation.GetCellUsingLocationIndex(nodeBGlobalIndex);
+
+    // double current_radius_a = p_cell_A->GetCellData()->GetItem("Current Radius");
+    // p_node_a->SetRadius(current_radius_a);
+    // double current_radius_b = p_cell_B->GetCellData()->GetItem("Current Radius");
+    // p_node_b->SetRadius(current_radius_b);
+
+    // if (bool(dynamic_cast<NodeBasedCellPopulation<SPACE_DIM>*>(&rCellPopulation)))
+    // {
+    //     node_a_radius = p_node_a->GetRadius();
+    //     node_b_radius = p_node_b->GetRadius();
+    // }
+
+    // // Get the unit vector parallel to the line joining the two nodes
+    // c_vector<double, SPACE_DIM> unit_difference;
+    // /*
+    //  * We use the mesh method GetVectorFromAtoB() to compute the direction of the
+    //  * unit vector along the line joining the two nodes, rather than simply subtract
+    //  * their positions, because this method can be overloaded (e.g. to enforce a
+    //  * periodic boundary in Cylindrical2dMesh).
+    //  */
+    // unit_difference = rCellPopulation.rGetMesh().GetVectorFromAtoB(r_node_a_location, r_node_b_location);
+
+    // // Calculate the distance between the two nodes
+    // double distance_between_nodes = norm_2(unit_difference);
+    // assert(distance_between_nodes > 0);
+    // assert(!std::isnan(distance_between_nodes));
+
+    // unit_difference /= distance_between_nodes;
+
+    // /*
+    //  * If mUseCutOffLength has been set, then there is zero force between
+    //  * two nodes located a distance apart greater than mMechanicsCutOffLength in AbstractTwoBodyInteractionForce.
+    //  */
+    // if (this->mUseCutOffLength)
+    // {
+    //     if (distance_between_nodes >= this->GetCutOffLength())
+    //     {
+    //         return zero_vector<double>(SPACE_DIM); // c_vector<double,SPACE_DIM>() is not guaranteed to be fresh memory
+    //     }
+    // }
+
+    // /*
+    //  * Calculate the rest length of the spring connecting the two nodes with a default
+    //  * value of 1.0.
+    //  */
+    // double rest_length_final = 1.0;
+
+    // if (bool(dynamic_cast<MeshBasedCellPopulation<ELEMENT_DIM,SPACE_DIM>*>(&rCellPopulation)))
+    // {
+    //     rest_length_final = static_cast<MeshBasedCellPopulation<ELEMENT_DIM,SPACE_DIM>*>(&rCellPopulation)->GetRestLength(nodeAGlobalIndex, nodeBGlobalIndex);
+    // }
+    // else if (bool(dynamic_cast<NodeBasedCellPopulation<SPACE_DIM>*>(&rCellPopulation)))
+    // {
+    //     assert(node_a_radius > 0 && node_b_radius > 0);
+    //     rest_length_final = node_a_radius+node_b_radius;
+    // }
+
+    // double rest_length = rest_length_final;
+
+    
+    // // Update growth inhibition
+    // // double combined_resting_cell_radius = node_a_radius + node_b_radius;
+    // // double compression = combined_resting_cell_radius - distance_between_nodes;
+    // // if (compression > 0.2 * node_a_radius) {
+    // //     p_cell_A->GetCellData()->SetItem("growth inhibited", 1.0);
+    // // }
+
+
+    // // if (compression > 0.2 * node_b_radius) {
+    // //     p_cell_B->GetCellData()->SetItem("growth inhibited", 1.0);
+    // // }
+
+    // // Get the cell cycle phase
+    // // FixedDurationCellCycleModelWithContactInhibition* p_model_A = dynamic_cast<FixedDurationCellCycleModelWithContactInhibition*>(p_cell_A->GetCellCycleModel());
+    // // FixedDurationCellCycleModelWithContactInhibition* p_model_B = dynamic_cast<FixedDurationCellCycleModelWithContactInhibition*>(p_cell_B->GetCellCycleModel());
+
+    // // unsigned phase_A = p_model_A->GetCurrentCellCyclePhase();
+    // // unsigned phase_B = p_model_B->GetCurrentCellCyclePhase();
+    
+    // // double phase_timer_A = p_model_A->GetPhaseTimer();
+    // // double phase_timer_B = p_model_B->GetPhaseTimer();
+
+    // // double phase_duration = 
+
+    // double ageA = p_cell_A->GetAge();
+    // double ageB = p_cell_B->GetAge();
+
+    // assert(!std::isnan(ageA));
+    // assert(!std::isnan(ageB));
+
+    // /*
+    //  * If the cells are both newly divided, then the rest length of the spring
+    //  * connecting them grows linearly with time, until 1 hour after division.
+    //  */
+    // if (ageA < mMeinekeSpringGrowthDuration && ageB < mMeinekeSpringGrowthDuration)
+    // {
+    //     AbstractCentreBasedCellPopulation<ELEMENT_DIM,SPACE_DIM>* p_static_cast_cell_population = static_cast<AbstractCentreBasedCellPopulation<ELEMENT_DIM,SPACE_DIM>*>(&rCellPopulation);
+
+    //     // PRINT_3_VARIABLES(ageA,ageB,SimulationTime::Instance()->GetTimeStep());
+    //     std::pair<CellPtr,CellPtr> cell_pair = p_static_cast_cell_population->CreateCellPair(p_cell_A, p_cell_B);
+    //     if(ageA == ageB && ageA <= SimulationTime::Instance()->GetTimeStep() )
+    //     {
+    //         // PRINT_VECTOR(r_node_a_location);
+    //         // PRINT_VECTOR(r_node_b_location);
+    //         if (norm_2(r_node_a_location-r_node_b_location) < 0.5)
+    //         {
+    //             // This spring has just been created
+    //             // PRINT_VARIABLE("Marking spring");
+    //             p_static_cast_cell_population->MarkSpring(cell_pair);
+
+    //         }
+    //     }
+    //     if (p_static_cast_cell_population->IsMarkedSpring(cell_pair))
+    //     {
+    //         // Spring rest length increases from a small value to the normal rest length over 1 hour
+    //         double lambda = mMeinekeDivisionRestingSpringLength;
+    //         rest_length = lambda + (rest_length_final - lambda) * ageA/mMeinekeSpringGrowthDuration;
+    //     }
+
+    //     if (ageA + SimulationTime::Instance()->GetTimeStep() >= mMeinekeSpringGrowthDuration)
+    //     {
+    //         // This spring is about to go out of scope
+    //         p_static_cast_cell_population->UnmarkSpring(cell_pair);
+    //     }
+    // }
+
+    // /*
+    //  * For apoptosis, progressively reduce the radius of the cell
+    //  */
+    // double a_rest_length = rest_length*0.5;
+    // double b_rest_length = a_rest_length;
+
+    // if (bool(dynamic_cast<NodeBasedCellPopulation<SPACE_DIM>*>(&rCellPopulation)))
+    // {
+    //     assert(node_a_radius > 0 && node_b_radius > 0);
+    //     a_rest_length = (node_a_radius/(node_a_radius+node_b_radius))*rest_length;
+    //     b_rest_length = (node_b_radius/(node_a_radius+node_b_radius))*rest_length;
+    // }
+
+    // /*
+    //  * If either of the cells has begun apoptosis, then the length of the spring
+    //  * connecting them decreases linearly with time.
+    //  */
+    // if (p_cell_A->HasApoptosisBegun())
+    // {
+    //     double time_until_death_a = p_cell_A->GetTimeUntilDeath();
+    //     a_rest_length = a_rest_length * time_until_death_a / p_cell_A->GetApoptosisTime();
+    // }
+    // if (p_cell_B->HasApoptosisBegun())
+    // {
+    //     double time_until_death_b = p_cell_B->GetTimeUntilDeath();
+    //     b_rest_length = b_rest_length * time_until_death_b / p_cell_B->GetApoptosisTime();
+    // }
+
+    // // PRINT_VARIABLE(a_rest_length);
+    // rest_length = a_rest_length + b_rest_length;
+    // //assert(rest_length <= 1.0+1e-12); ///\todo #1884 Magic number: would "<= 1.0" do?
+
+    // // Although in this class the 'spring constant' is a constant parameter, in
+    // // subclasses it can depend on properties of each of the cells
+    // double overlap = distance_between_nodes - rest_length;
+    // bool is_closer_than_rest_length = (overlap <= 0);
+    // double multiplication_factor = VariableSpringConstantMultiplicationFactor(nodeAGlobalIndex, nodeBGlobalIndex, rCellPopulation, is_closer_than_rest_length);
+    // double spring_stiffness = mMeinekeSpringStiffness;
+
+    // if (bool(dynamic_cast<MeshBasedCellPopulation<ELEMENT_DIM,SPACE_DIM>*>(&rCellPopulation)))
+    // {
+    //     return multiplication_factor * spring_stiffness * unit_difference * overlap;
+    // }
+    // else
+    // {
+    //     // A reasonably stable simple force law
+    //     if (is_closer_than_rest_length) //overlap is negative
+    //     {
+    //         //log(x+1) is undefined for x<=-1
+    //         assert(overlap > -rest_length_final);
+    //         c_vector<double, SPACE_DIM> temp = multiplication_factor*spring_stiffness * unit_difference * rest_length_final* log(1.0 + overlap/rest_length_final);
+    //         return temp;
+    //     }
+    //     else
+    //     {
+    //         double alpha = 5.0;
+    //         c_vector<double, SPACE_DIM> temp = multiplication_factor*spring_stiffness * unit_difference * overlap * exp(-alpha * overlap/rest_length_final);
+    //         return temp;
+    //     }
+    // }
+
+    // *************************************************************************** //
     // We should only ever calculate the force between two distinct nodes
     assert(nodeAGlobalIndex != nodeBGlobalIndex);
 
@@ -89,15 +302,17 @@ c_vector<double, SPACE_DIM> GeneralisedLinearSpringForceWithMinDistanceItem<ELEM
     CellPtr p_cell_A = rCellPopulation.GetCellUsingLocationIndex(nodeAGlobalIndex);
     CellPtr p_cell_B = rCellPopulation.GetCellUsingLocationIndex(nodeBGlobalIndex);
 
-    double current_radius_a = p_cell_A->GetCellData()->GetItem("Current Radius");
+    double current_radius_a = p_cell_A->GetCellData()->GetItem("Radius");
     p_node_a->SetRadius(current_radius_a);
-    double current_radius_b = p_cell_B->GetCellData()->GetItem("Current Radius");
+    double current_radius_b = p_cell_B->GetCellData()->GetItem("Radius");
     p_node_b->SetRadius(current_radius_b);
 
     if (bool(dynamic_cast<NodeBasedCellPopulation<SPACE_DIM>*>(&rCellPopulation)))
     {
-        node_a_radius = p_node_a->GetRadius();
-        node_b_radius = p_node_b->GetRadius();
+        // node_a_radius = p_node_a->GetRadius();
+        // node_b_radius = p_node_b->GetRadius();
+        node_a_radius = current_radius_a;
+        node_b_radius = current_radius_b;
     }
 
     // Get the unit vector parallel to the line joining the two nodes
@@ -145,50 +360,77 @@ c_vector<double, SPACE_DIM> GeneralisedLinearSpringForceWithMinDistanceItem<ELEM
         rest_length_final = node_a_radius+node_b_radius;
     }
 
-    double rest_length = rest_length_final;
+    double rest_length = rest_length_final;    
 
-    
-    // Update growth inhibition
-    double combined_resting_cell_radius = node_a_radius + node_b_radius;
-    double compression = combined_resting_cell_radius - distance_between_nodes;
-    if (compression > 0.2 * node_a_radius) {
-        p_cell_A->GetCellData()->SetItem("growth inhibited", 1.0);
-    }
+    // Get the cell cycle phase
+    // FixedDurationCellCycleModelWithContactInhibition* p_model_A = dynamic_cast<FixedDurationCellCycleModelWithContactInhibition*>(p_cell_A->GetCellCycleModel());
+    // FixedDurationCellCycleModelWithContactInhibition* p_model_B = dynamic_cast<FixedDurationCellCycleModelWithContactInhibition*>(p_cell_B->GetCellCycleModel());
+    // FixedGrowthModelWithContactInhibition* p_model_A = dynamic_cast<FixedGrowthModelWithContactInhibition*>(p_cell_A->GetCellCycleModel());
+    // FixedGrowthModelWithContactInhibition* p_model_B = dynamic_cast<FixedGrowthModelWithContactInhibition*>(p_cell_B->GetCellCycleModel());
 
-
-    if (compression > 0.2 * node_b_radius) {
-        p_cell_B->GetCellData()->SetItem("growth inhibited", 1.0);
-    }
+    // double phase_timer_A = p_model_A->GetPhaseTimer();
+    // double phase_timer_B = p_model_B->GetPhaseTimer();
 
 
-    double ageA = p_cell_A->GetAge();
-    double ageB = p_cell_B->GetAge();
+    // double ageA = p_cell_A->GetAge();
+    // double ageB = p_cell_B->GetAge();
 
-    assert(!std::isnan(ageA));
-    assert(!std::isnan(ageB));
+    // assert(!std::isnan(ageA));
+    // assert(!std::isnan(ageB));
 
-    /*
-     * If the cells are both newly divided, then the rest length of the spring
-     * connecting them grows linearly with time, until 1 hour after division.
-     */
-    if (ageA < mMeinekeSpringGrowthDuration && ageB < mMeinekeSpringGrowthDuration)
-    {
-        AbstractCentreBasedCellPopulation<ELEMENT_DIM,SPACE_DIM>* p_static_cast_cell_population = static_cast<AbstractCentreBasedCellPopulation<ELEMENT_DIM,SPACE_DIM>*>(&rCellPopulation);
+    // AbstractCentreBasedCellPopulation<ELEMENT_DIM,SPACE_DIM>* p_static_cast_cell_population = static_cast<AbstractCentreBasedCellPopulation<ELEMENT_DIM,SPACE_DIM>*>(&rCellPopulation);
+    // std::pair<CellPtr,CellPtr> cell_pair = p_static_cast_cell_population->CreateCellPair(p_cell_A, p_cell_B);
 
-        std::pair<CellPtr,CellPtr> cell_pair = p_static_cast_cell_population->CreateCellPair(p_cell_A, p_cell_B);
+    // if (p_static_cast_cell_population->IsMarkedSpring(cell_pair))
+    // {
+    //     // Spring rest length increases from a small value to the normal rest length over 1 hour
+    //     double lambda = mMeinekeDivisionRestingSpringLength;
+    //     rest_length = lambda + (rest_length_final - lambda) * phase_timer_A/mMeinekeSpringGrowthDuration;
+    // }
 
-        if (p_static_cast_cell_population->IsMarkedSpring(cell_pair))
-        {
-            // Spring rest length increases from a small value to the normal rest length over 1 hour
-            double lambda = mMeinekeDivisionRestingSpringLength;
-            rest_length = lambda + (rest_length_final - lambda) * ageA/mMeinekeSpringGrowthDuration;
-        }
-        if (ageA + SimulationTime::Instance()->GetTimeStep() >= mMeinekeSpringGrowthDuration)
-        {
-            // This spring is about to go out of scope
-            p_static_cast_cell_population->UnmarkSpring(cell_pair);
-        }
-    }
+    // if (phase_timer_A + SimulationTime::Instance()->GetTimeStep() >= mMeinekeSpringGrowthDuration && p_static_cast_cell_population->IsMarkedSpring(cell_pair))
+    // {
+    //     // This spring is about to go out of scope
+    //     p_static_cast_cell_population->UnmarkSpring(cell_pair);
+    // }
+
+    // /*
+    //  * If the cells are both newly divided, then the rest length of the spring
+    //  * connecting them grows linearly with time, until 1 hour after division.
+    //  */
+    // if (ageA < mMeinekeSpringGrowthDuration && ageB < mMeinekeSpringGrowthDuration)
+    // {
+
+    //     // PRINT_3_VARIABLES(ageA,ageB,SimulationTime::Instance()->GetTimeStep());
+        
+    //     if(ageA == ageB && ageA <= SimulationTime::Instance()->GetTimeStep() )
+    //     {
+    //         // PRINT_VECTOR(r_node_a_location);
+    //         // PRINT_VECTOR(r_node_b_location);
+    //         if (norm_2(r_node_a_location-r_node_b_location) < 1.05*mMeinekeDivisionRestingSpringLength)
+    //         {
+    //             // This spring has just been created
+    //             // PRINT_VARIABLE("Marking spring");
+    //             p_static_cast_cell_population->MarkSpring(cell_pair);
+    //             p_model_A->SetPhaseTimer(0.0);
+    //             p_model_B->SetPhaseTimer(0.0);
+    //             p_cell_A->GetCellData()->SetItem("cell age", 0.0);
+    //             p_cell_B->GetCellData()->SetItem("cell age", 0.0);
+
+    //             // p_node_a->SetRadius(0.5*mMeinekeDivisionRestingSpringLength);
+    //             // p_node_b->SetRadius(0.5*mMeinekeDivisionRestingSpringLength);
+    //             // if (bool(dynamic_cast<NodeBasedCellPopulation<SPACE_DIM>*>(&rCellPopulation)))
+    //             // {
+    //             //     // node_a_radius = p_node_a->GetRadius();
+    //             //     // node_b_radius = p_node_b->GetRadius();
+    //             //     node_a_radius = current_radius_a;
+    //             //     node_b_radius = current_radius_b;
+    //             // }
+    //         }
+            
+    //     }
+        
+    // }
 
     /*
      * For apoptosis, progressively reduce the radius of the cell
@@ -218,7 +460,9 @@ c_vector<double, SPACE_DIM> GeneralisedLinearSpringForceWithMinDistanceItem<ELEM
         b_rest_length = b_rest_length * time_until_death_b / p_cell_B->GetApoptosisTime();
     }
 
+    // PRINT_VARIABLE(a_rest_length);
     rest_length = a_rest_length + b_rest_length;
+    rest_length_final = rest_length;
     //assert(rest_length <= 1.0+1e-12); ///\todo #1884 Magic number: would "<= 1.0" do?
 
     // Although in this class the 'spring constant' is a constant parameter, in
@@ -228,27 +472,71 @@ c_vector<double, SPACE_DIM> GeneralisedLinearSpringForceWithMinDistanceItem<ELEM
     double multiplication_factor = VariableSpringConstantMultiplicationFactor(nodeAGlobalIndex, nodeBGlobalIndex, rCellPopulation, is_closer_than_rest_length);
     double spring_stiffness = mMeinekeSpringStiffness;
 
-    if (bool(dynamic_cast<MeshBasedCellPopulation<ELEMENT_DIM,SPACE_DIM>*>(&rCellPopulation)))
+    if (mForceLawType == "linear")
     {
-        return multiplication_factor * spring_stiffness * unit_difference * overlap;
-    }
-    else
-    {
-        // A reasonably stable simple force law
-        if (is_closer_than_rest_length) //overlap is negative
+        // PRINT_2_VARIABLES(mForceLawType, spring_stiffness);
+        if (is_closer_than_rest_length)
         {
-            //log(x+1) is undefined for x<=-1
-            assert(overlap > -rest_length_final);
-            c_vector<double, SPACE_DIM> temp = multiplication_factor*spring_stiffness * unit_difference * rest_length_final* log(1.0 + overlap/rest_length_final);
-            return temp;
+            return multiplication_factor * spring_stiffness * unit_difference * overlap;        }
+        else
+        {
+            return zero_vector<double>(SPACE_DIM);
+        }
+        
+    }
+    else if (mForceLawType == "quadratic")
+    {
+        // PRINT_2_VARIABLES(mForceLawType, spring_stiffness);
+        if (is_closer_than_rest_length)
+        {
+            return - multiplication_factor * spring_stiffness * unit_difference * pow((1.0 - distance_between_nodes/rest_length),2.0);
         }
         else
         {
-            double alpha = 5.0;
-            c_vector<double, SPACE_DIM> temp = multiplication_factor*spring_stiffness * unit_difference * overlap * exp(-alpha * overlap/rest_length_final);
-            return temp;
+            return zero_vector<double>(SPACE_DIM);
         }
     }
+    else if (mForceLawType == "log")
+    {
+        // PRINT_2_VARIABLES(mForceLawType, spring_stiffness);
+        if (is_closer_than_rest_length)
+        {
+            assert(overlap > -rest_length_final);
+            return multiplication_factor*spring_stiffness * unit_difference * rest_length_final* log(1.0 + overlap/rest_length_final);
+        }
+        else
+        {
+            return zero_vector<double>(SPACE_DIM);
+        }
+    }
+    else
+    {
+        return zero_vector<double>(SPACE_DIM);
+    }
+
+    // if (bool(dynamic_cast<MeshBasedCellPopulation<ELEMENT_DIM,SPACE_DIM>*>(&rCellPopulation)))
+    // {
+    //     return multiplication_factor * spring_stiffness * unit_difference * overlap;
+    // }
+    // else
+    // {
+    //     // A reasonably stable simple force law
+    //     if (is_closer_than_rest_length) //overlap is negative
+    //     {
+    //         //log(x+1) is undefined for x<=-1
+    //         assert(overlap > -rest_length_final);
+    //         c_vector<double, SPACE_DIM> temp = multiplication_factor*spring_stiffness * unit_difference * rest_length_final* log(1.0 + overlap/rest_length_final);
+    //         return temp;
+    //     }
+    //     else
+    //     {
+    //         // double alpha = 5.0;
+    //         // c_vector<double, SPACE_DIM> temp = multiplication_factor*spring_stiffness * unit_difference * overlap * exp(-alpha * overlap/rest_length_final);
+    //         // return temp;
+    //         return zero_vector<double>(SPACE_DIM);
+    //     }
+    // }
+
 }
 
 template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
@@ -294,11 +582,18 @@ void GeneralisedLinearSpringForceWithMinDistanceItem<ELEMENT_DIM,SPACE_DIM>::Set
 }
 
 template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
+void GeneralisedLinearSpringForceWithMinDistanceItem<ELEMENT_DIM,SPACE_DIM>::SetForceLawType(std::string force_law)
+{
+    mForceLawType = force_law;
+}
+
+template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
 void GeneralisedLinearSpringForceWithMinDistanceItem<ELEMENT_DIM,SPACE_DIM>::OutputForceParameters(out_stream& rParamsFile)
 {
     *rParamsFile << "\t\t\t<MeinekeSpringStiffness>" << mMeinekeSpringStiffness << "</MeinekeSpringStiffness>\n";
     *rParamsFile << "\t\t\t<MeinekeDivisionRestingSpringLength>" << mMeinekeDivisionRestingSpringLength << "</MeinekeDivisionRestingSpringLength>\n";
     *rParamsFile << "\t\t\t<MeinekeSpringGrowthDuration>" << mMeinekeSpringGrowthDuration << "</MeinekeSpringGrowthDuration>\n";
+    *rParamsFile << "\t\t\t<ForceLawType>" << mForceLawType << "</ForceLawType>\n";
 
     // Call method on direct parent class
     AbstractTwoBodyInteractionForce<ELEMENT_DIM,SPACE_DIM>::OutputForceParameters(rParamsFile);

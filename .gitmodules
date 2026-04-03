@@ -1,0 +1,3 @@
+[submodule "OpenVTMonolayerGrowthProcessing"]
+	path = OpenVTMonolayerGrowthProcessing
+	url = https://github.com/DGermano8/OpenVTMonolayerGrowthProcessing.git

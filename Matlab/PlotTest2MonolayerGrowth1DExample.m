@@ -1,6 +1,6 @@
-        clear; close all;
+clear; close all;
 
-BaseType = '../../../testoutput/Test02MonlayerGrowthGrowth1d';
+BaseType = '/Users/dger0683/ChasteWorkspace/chaste_output/Test02MonlayerGrowthGrowth1d';
 
 Models = {'Mesh_Linear','Mesh_Quadratic'};
 ModelTitles = {'Mesh Linear','Mesh Quadratic'};

@@ -1,3 +1,5 @@
 **.DS_Store
 build/
 
+# Ignore all files in the data directory
+Matlab/*

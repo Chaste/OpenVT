@@ -83,9 +83,16 @@ private:
         archive & mMeinekeSpringStiffness;
         archive & mMeinekeDivisionRestingSpringLength;
         archive & mMeinekeSpringGrowthDuration;
+        archive & mForceLawType;
     }
 
 protected:
+
+    /*
+    * Force law type, which can be linear, quadratic or log.
+    * 
+    */
+    std::string mForceLawType;
 
     /**
      * Spring stiffness.
@@ -193,6 +200,13 @@ public:
      * @param springGrowthDuration the new value of mMeinekeSpringGrowthDuration
      */
     void SetMeinekeSpringGrowthDuration(double springGrowthDuration);
+
+    /**
+     * Set the force law type.
+     *
+     * @param force_law the new value of mForceLawType
+     */
+    void SetForceLawType(std::string force_law);
 
     /**
      * Overridden OutputForceParameters() method.
