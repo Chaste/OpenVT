@@ -155,7 +155,7 @@ void FixedGrowthModelWithContactInhibition::UpdateCellCyclePhase()
         double final_area_i = -1.0;
         while (final_area_i <= 0.0)
         {
-            final_area_i = RandomNumberGenerator::Instance()->NormalRandomDeviate(2.0, 0.4*0.4);
+            final_area_i = RandomNumberGenerator::Instance()->NormalRandomDeviate(2.0, 0.4);
             // PRINT_VARIABLE(final_area_i);
         }
         double initial_area = M_PI*initial_radius*initial_radius;

@@ -122,7 +122,7 @@ if __name__ == '__main__':
 # beta_parameter = 0.0 #0.971458
 # gamma_ind = 1
 # gamma_parameter = 0.0 #0.677817
-# sample_rate = 0.5/0.002
+# sample_rate = 0.25/0.002
 # index = 0
 
 # force_law = "quadratic" # "log"; # "quadratic"; # "linear";

@@ -139,7 +139,7 @@ private:
             double final_area_i = -1.0;
             while (final_area_i <= 0.0)
             {
-                final_area_i = RandomNumberGenerator::Instance()->NormalRandomDeviate(2.0, 0.4*0.4);
+                final_area_i = RandomNumberGenerator::Instance()->NormalRandomDeviate(2.0, 0.4);
                 // PRINT_VARIABLE(final_area_i);
             }
             double initial_area = 0.5*final_area_i;
@@ -180,7 +180,7 @@ public:
      */
     void Test2DMonolayerWithoutDiffusionSingleCell()
     {
-
+        TRACE("Running Test2DMonolayerWithoutDiffusionSingleCell with parameters:");
         double spring_stiffness = 0.0;
         // create a string identifier to take the string values of either linear, quadratic or log force law
         // std::string force_law = "quadratic"; // "log"; // "quadratic"; // "linear";
